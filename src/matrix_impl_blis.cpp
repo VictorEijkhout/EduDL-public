@@ -89,6 +89,23 @@ void Matrix::outerProduct(const Vector &x, const Vector &y) {
 }
 
 
+void Matrix::mmp(const Matrix &x, Matrix &y) const { // In place matrix matrix multiplication
+  assert( c==x.r );
+  assert( r==y.r );
+  assert( x.c==y.c );
+
+  float alpha = 1.0;
+  float beta = 0.0;
+  // m = r, n = x.c, k = c
+  //printf("BLIS gemm %dx%dx%d\n",r,x.c,c);
+  bli_sgemm( BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, 
+	     r, x.c, c, &alpha, const_cast<float*>(&mat[0]),
+	     //c, 1, &t.mat[0],
+	     c, 1, const_cast<float*>( x.data() ),
+	     x.c, 1, &beta, &y.mat[0], x.c, 1);
+}
+
+
 void Matrix::mv2p(const VectorBundle &x, VectorBundle &y) const { // In place matrix matrix multiplication
   assert( c==x.r );
   assert( r==y.r );

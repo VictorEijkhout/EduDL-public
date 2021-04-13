@@ -56,10 +56,6 @@ VectorBundle VectorBundle::operator-(const VectorBundle &m2) {
   return out;
 }
 
-
-
-
-
 VectorBundle VectorBundle::operator*(const VectorBundle &m2) { // Hadamard product
   VectorBundle out(m2.r, m2.c, 0);
   for (int i = 0; i < m2.r * m2.c; i++) {
@@ -84,3 +80,19 @@ VectorBundle VectorBundle::operator-() {
 
   return result;
 };
+
+VectorBundle operator/(const VectorBundle &m, const float &c) {
+  VectorBundle o = m;
+  for (int i = 0; i < o.r * o.c; i++) {
+    o.vals[i] = o.vals[i] / c;
+  }
+  return o;
+}
+
+VectorBundle operator*(const float &c, const VectorBundle &m) {
+  VectorBundle o = m;
+  for (int i = 0; i < o.r * o.c; i++) {
+    o.vals[i] = o.vals[i] * c;
+  }
+  return o;
+}

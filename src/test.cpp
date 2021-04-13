@@ -1,3 +1,9 @@
+/*
+ * A simple test neural network
+ * 
+ * Test data set: http://cis.jhu.edu/~sachin/digit/digit.html
+ */
+
 #include <iostream>
 #include <chrono>
 #include <vector>

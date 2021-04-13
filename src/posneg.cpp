@@ -87,13 +87,15 @@ int main(int argc,char **argv){
   }
   test_net.set_learning_rate(lr);
   test_net.set_decay(0.9);
+  test_net.set_momentum(0.9);
+  test_net.set_optimizer(network_optimizer);
 
   auto [trainSplit,testSplit] = data.split(0.95);
 	
   std::cout << test_net.accuracy(data) << "\n";
   auto start_time = myclock::now();
   test_net.train(trainSplit,testSplit,
-		 epochs, (opt)network_optimizer, cce, batchSize);
+		 epochs, cce, batchSize);
   auto duration = myclock::now()-start_time;
   auto microsec_duration = std::chrono::duration_cast<std::chrono::microseconds>(duration);
   std::cout << "Final Accuracy over all data: " << test_net.accuracy(data) << "\n"

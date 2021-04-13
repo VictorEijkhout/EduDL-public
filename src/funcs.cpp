@@ -71,7 +71,7 @@ void softmax_io(const V &m, V &a) {
 }
 
 template <typename V>
-void none_io(const V &m, V &a) {
+void linear_io(const V &m, V &a) {
   a.vals.assign(m.vals.begin(),m.vals.end());
 }
 
@@ -89,9 +89,49 @@ void reluGrad_io(const V &m, V &a) {
 
 template <typename V>
 void sigGrad_io(const V &m, V &a) {
+  assert( m.size()==a.size() );
   a.vals.assign(m.vals.begin(),m.vals.end());
   for ( auto &e : a.vals )
     e = e * (1.0 - e);
+}
+
+template <typename V>
+void smaxGrad_io(const V &m, V &a) {
+  assert( m.size()==a.size() );
+  /* Incomplete for now */
+}
+
+Matrix smaxGrad_vec(std::vector<float> &v) {
+  Matrix im(v.size(),1,0); // Input but converted to a matrix
+
+  for (int i=0; i<v.size(); i++){
+    im.mat[i] = v[i];
+  }
+
+  Matrix dM = im;
+
+  Matrix diag(dM.r,dM.r,0);
+
+  for (int i=0,j=0; i<diag.r*diag.c; i+=diag.r+1,j++) {
+    // identity * dM
+    diag.mat[i] = dM.mat[j];
+  }
+
+  // S_(i,j) dot S_(i,k)
+  Matrix dMT = dM.transpose();
+
+  Matrix S(dM.r,dMT.c,0);
+  dM.mmp(dMT, S);
+  im = diag - S; // Jacobian
+  return im;
+
+}
+
+
+template <typename V>
+void linGrad_io(const V &m, V &a) {
+  assert( m.size()==a.size() );
+  std::fill(a.vals.begin(), a.vals.end(), 1.0); // gradient of a linear function
 }
 
 // IM: Predefine templates so we can use them in separate .h and .cpp files
@@ -104,8 +144,8 @@ template void sigmoid_io<VectorBundle>(const VectorBundle&, VectorBundle&);
 template void softmax_io<Vector>(const Vector&, Vector&);
 template void softmax_io<VectorBundle>(const VectorBundle&, VectorBundle&);
 
-template void none_io<Vector>(const Vector&, Vector&);
-template void none_io<VectorBundle>(const VectorBundle&, VectorBundle&);
+template void linear_io<Vector>(const Vector&, Vector&);
+template void linear_io<VectorBundle>(const VectorBundle&, VectorBundle&);
 
 template void reluGrad_io<Vector>(const Vector&, Vector&);
 template void reluGrad_io<VectorBundle>(const VectorBundle&, VectorBundle&);
@@ -113,3 +153,8 @@ template void reluGrad_io<VectorBundle>(const VectorBundle&, VectorBundle&);
 template void sigGrad_io<Vector>(const Vector&, Vector&);
 template void sigGrad_io<VectorBundle>(const VectorBundle&, VectorBundle&);
 
+template void smaxGrad_io<Vector>(const Vector&, Vector&);
+template void smaxGrad_io<VectorBundle>(const VectorBundle&, VectorBundle&);
+
+template void linGrad_io<Vector>(const Vector&, Vector&);
+template void linGrad_io<VectorBundle>(const VectorBundle&, VectorBundle&);

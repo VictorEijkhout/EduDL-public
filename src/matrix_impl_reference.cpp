@@ -89,6 +89,21 @@ void Matrix::outerProduct(const Vector &x, const Vector &y) {
 
 }
 
+void Matrix::mmp(const Matrix &x, Matrix &y) const {
+  assert( c==x.r );
+  assert( r==y.r );
+  assert( x.c==y.c );
+  float sum;
+  for (int i = 0; i < r; i++) { // Matrix multiplication subroutine
+    for (int j = 0; j < x.c; j++) {
+      sum = 0.0;
+      for (int k = 0; k < x.r; k++) {
+	sum += mat[i * c + k] * x.mat[k * x.c + j];
+      }
+      y.mat[i * y.c + j] = sum;
+    }
+  }
+}
 
 void Matrix::mv2p(const VectorBundle &x, VectorBundle &y) const { // In place matrix matrix multiplication
   assert( c==x.r );

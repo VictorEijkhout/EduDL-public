@@ -18,7 +18,8 @@ Matrix::Matrix() { // Default constructor
 // }
 
 
-float *Matrix::data() { return mat.data(); };
+float* Matrix::data() { return mat.data(); };
+const float* const Matrix::data() const { return mat.data(); };
 
 Matrix &Matrix::operator=(const Matrix &m2) { // Overloading the = operator
   r = m2.r;
@@ -49,6 +50,7 @@ Matrix Matrix::operator-(const Matrix &m2) {
 
 Matrix operator*(const float &c, const Matrix &m) {
   Matrix o = m;
+  assert(o.mat.size()==o.r*o.c);
   for (int i = 0; i < o.r * o.c; i++) {
     o.mat[i] = c * o.mat[i];
   }
@@ -66,6 +68,7 @@ Matrix operator/(const Matrix &m, const float &c) {
 
 Matrix Matrix::operator*(const Matrix &m2) { // Hadamard product
   Matrix out(m2.r, m2.c, 0);
+  assert(out.mat.size()==m2.r * m2.c);
   for (int i = 0; i < m2.r * m2.c; i++) {
     out.mat[i] = this->mat[i] * m2.mat[i];
   }
