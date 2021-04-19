@@ -1,3 +1,16 @@
+/****************************************************************
+ ****************************************************************
+ ****
+ **** This text file is part of the source of 
+ **** `Introduction to High-Performance Scientific Computing'
+ **** by Victor Eijkhout, copyright 2012-2021
+ ****
+ **** Deep Learning Network code 
+ **** copyright 2021 Ilknur Mustafazade
+ ****
+ ****************************************************************
+ ****************************************************************/
+
 #include "matrix.h"
 #include <iostream>
 #include <vector>
@@ -105,8 +118,8 @@ void Matrix::mmp(const Matrix &x, Matrix &y) const { // In place matrix matrix m
 	     x.c, 1, &beta, &y.mat[0], x.c, 1);
 }
 
-
-void Matrix::mv2p(const VectorBundle &x, VectorBundle &y) const { // In place matrix matrix multiplication
+/*
+  void Matrix::mv2p(const VectorBatch &x, VectorBatch &y) const { // In place matrix matrix multiplication
   assert( c==x.r );
   assert( r==y.r );
   assert( x.c==y.c );
@@ -116,13 +129,13 @@ void Matrix::mv2p(const VectorBundle &x, VectorBundle &y) const { // In place ma
   // m = r, n = x.c, k = c
   //printf("BLIS gemm %dx%dx%d\n",r,x.c,c);
   bli_sgemm( BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, 
-	     r, x.c, c, &alpha, const_cast<float*>(&mat[0]),
-	     //c, 1, &t.mat[0],
-	     c, 1, const_cast<float*>( x.data() ),
-	     x.c, 1, &beta, &y.vals[0], x.c, 1);
-}
+  r, x.c, c, &alpha, const_cast<float*>(&mat[0]),
+  //c, 1, &t.mat[0],
+  c, 1, const_cast<float*>( x.data() ),
+  x.c, 1, &beta, &y.vals[0], x.c, 1);
+  }
 
-void Matrix::mv2pt(const VectorBundle &x, VectorBundle &y) const { // In place matrix matrix multiplication
+  void Matrix::mv2pt(const VectorBatch &x, VectorBatch &y) const { // In place matrix matrix multiplication
   // (n,m) * (n,k) -> (m,k)
   assert( r==x.r );
   assert( c==y.r );
@@ -133,13 +146,13 @@ void Matrix::mv2pt(const VectorBundle &x, VectorBundle &y) const { // In place m
   // m = r, n = x.c, k = c
   //printf("BLIS gemm %dx%dx%d\n",r,x.c,c);
   bli_sgemm( BLIS_TRANSPOSE, BLIS_NO_TRANSPOSE, 
-	     c, x.c, r, &alpha, const_cast<float*>(&mat[0]), // r, x.c, c -> c, x.c, r to work
-	     //c, 1, &t.mat[0],
-	     c, 1, const_cast<float*>( x.data() ),
-	     x.c, 1, &beta, &y.vals[0], x.c, 1);
-}
+  c, x.c, r, &alpha, const_cast<float*>(&mat[0]), // r, x.c, c -> c, x.c, r to work
+  //c, 1, &t.mat[0],
+  c, 1, const_cast<float*>( x.data() ),
+  x.c, 1, &beta, &y.vals[0], x.c, 1);
+  }
 
-void Matrix::outer2(const VectorBundle &x, const VectorBundle &y) { // In place matrix matrix multiplication
+  void Matrix::outer2(const VectorBatch &x, const VectorBatch &y) { // In place matrix matrix multiplication
   assert( x.r == r );
   assert( c == y.r );
   assert( y.c == x.c );
@@ -151,8 +164,8 @@ void Matrix::outer2(const VectorBundle &x, const VectorBundle &y) { // In place 
   // m = r, n = x.c, k = c
   //printf("BLIS gemm (outer) %dx%d\n",r,c);
   bli_sgemm( BLIS_NO_TRANSPOSE, BLIS_TRANSPOSE, 
-	     r, c, x.c, &alpha, const_cast<float*>(x.data()),
-	     x.c, 1, const_cast<float*>( y.data() ),
-	     y.c, 1, &beta, &mat[0], c, 1);
-}
-
+  r, c, x.c, &alpha, const_cast<float*>(x.data()),
+  x.c, 1, const_cast<float*>( y.data() ),
+  y.c, 1, &beta, &mat[0], c, 1);
+  }
+*/

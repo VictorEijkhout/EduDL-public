@@ -1,11 +1,21 @@
-//
-// Created by Ilknur on 17-Dec-20.
-//
+/****************************************************************
+ ****************************************************************
+ ****
+ **** This text file is part of the source of 
+ **** `Introduction to High-Performance Scientific Computing'
+ **** by Victor Eijkhout, copyright 2012-2021
+ ****
+ **** Deep Learning Network code 
+ **** copyright 2021 Ilknur Mustafazade
+ ****
+ ****************************************************************
+ ****************************************************************/
 
 #ifndef SRC_FUNCS_H
 #define SRC_FUNCS_H
 #include "matrix.h"
 #include "vector.h"
+#include "vector2.h"
 
 enum acFunc{RELU,SIG,SMAX,NONE};
 

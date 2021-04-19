@@ -1,19 +1,29 @@
-//
-// Created by Ilknur on 04-Dec-20.
-//
+/****************************************************************
+ ****************************************************************
+ ****
+ **** This text file is part of the source of 
+ **** `Introduction to High-Performance Scientific Computing'
+ **** by Victor Eijkhout, copyright 2012-2021
+ ****
+ **** Deep Learning Network code 
+ **** copyright 2021 Ilknur Mustafazade
+ ****
+ ****************************************************************
+ ****************************************************************/
 
 #ifndef CODE_DATASET_H
 #define CODE_DATASET_H
-#include "matrix.h"
+//#include "matrix.h"
+#include "vector2.h"
 #include "vector.h"
 #include <vector>
 #include <iostream>
 
 class dataItem{
 public: // should really be done through friends private:
-    Vector data; // Data matrix
+  Vector data; // Data matrix
   //Vector label; // Label
-    Categorization label; // Label
+  Categorization label; // Label
 public:
   dataItem( Vector data,/* Vector */ Categorization label)
     : data(data),label(label) {};
@@ -51,16 +61,15 @@ public:
   const std::vector<dataItem>& items() const { return _items; };
   //const Vector& label(int i) const { return items.at(i).label; };
 
-    std::string path; // Path of the dataset
-    VectorBundle dataBatch;
-    VectorBundle labelBatch;
+  std::string path; // Path of the dataset
+  VectorBatch dataBatch;
+  VectorBatch labelBatch;
 
-    int readTest(std::string dataPath); // Read modified MNIST Dataset
-    void shuffle(); // Mix the dataset
-    std::vector<Dataset> batch(int n); // Divides the dataset into n batches
-    void stack();
-    //    std::vector<Dataset> split(float trainFraction); // Train-test split
-    std::pair<Dataset,Dataset> split(float trainFraction); // Train-test split
+  int readTest(std::string dataPath); // Read modified MNIST Dataset
+  void shuffle(); // Mix the dataset
+  std::vector<Dataset> batch(int n); // Divides the dataset into n batches
+  void stack();
+  std::pair<Dataset,Dataset> split(float trainFraction); // Train-test split
 };
 
 

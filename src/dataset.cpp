@@ -1,6 +1,15 @@
-//
-// Created by Ilknur on 04-Dec-20.
-//
+/****************************************************************
+ ****************************************************************
+ ****
+ **** This text file is part of the source of 
+ **** `Introduction to High-Performance Scientific Computing'
+ **** by Victor Eijkhout, copyright 2012-2021
+ ****
+ **** Deep Learning Network code 
+ **** copyright 2021 Ilknur Mustafazade
+ ****
+ ****************************************************************
+ ****************************************************************/
 
 #include "dataset.h"
 #include <iostream>
@@ -47,7 +56,8 @@ const vector<float>& Dataset::data_vals(int i) const {
 };
 //! Same, of the stacked object
 vector<float> Dataset::stacked_data_vals(int i) const {
-  return dataBatch.get_col(i);
+  //return dataBatch.get_col(i);
+  return dataBatch.get_row(i);
 };
 
 /*!
@@ -58,7 +68,8 @@ const vector<float>& Dataset::label_vals(int i) const {
 };
 //! Same, of the stacked object
 vector<float> Dataset::stacked_label_vals(int i) const {
-  return labelBatch.get_col(i);
+  //return labelBatch.get_col(i);
+  return labelBatch.get_row(i);
 };
 
 /*!
@@ -157,17 +168,23 @@ std::vector<Dataset> Dataset::batch(int n) {
 }
 
 void Dataset::stack() { // Stacks vectors horizontally (column-wise) in a Matrix object
-  dataBatch  = VectorBundle( data_size(),  size(), 0);
-  labelBatch = VectorBundle( label_size(), size(), 0);
+  //dataBatch  = VectorBatch( data_size(),  size(), 0);
+  //labelBatch = VectorBatch( label_size(), size(), 0);
+    
+  dataBatch  = VectorBatch( size(),  data_size(), 0);
+  labelBatch = VectorBatch( size(), label_size(), 0);
 
   for (int j = 0; j < size(); j++) {
-    dataBatch.set_col( j,data_vals(j) );
+    //dataBatch.set_col( j,data_vals(j) );
+    dataBatch.set_row( j, data_vals(j) );
   }
 
   for (int j = 0; j < size(); j++) {
-    labelBatch.set_col( j,label_vals(j) );
+    //labelBatch.set_col( j,label_vals(j) );
+    labelBatch.set_row( j, label_vals(j) );
   }
 }
+
 
 /*!
  * Split a dataset into a training and testing dataset

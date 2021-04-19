@@ -1,6 +1,15 @@
-//
-// Created by Ilknur on 29-Nov-20.
-//
+/****************************************************************
+ ****************************************************************
+ ****
+ **** This text file is part of the source of 
+ **** `Introduction to High-Performance Scientific Computing'
+ **** by Victor Eijkhout, copyright 2012-2021
+ ****
+ **** Deep Learning Network code 
+ **** copyright 2021 Ilknur Mustafazade
+ ****
+ ****************************************************************
+ ****************************************************************/
 
 #include "vector.h"
 #include "net.h"
@@ -31,7 +40,7 @@ void Net::addLayer(int l, acFunc f) {
     newR = this->layers.back().output_size(); // Previous layer's row size
   }
 
-  Layer layer(newR, l); // Initialize layer object and add the necessary parameters
+  Layer layer(l, newR); // Initialize layer object and add the necessary parameters
     
   layer.activation = f;                   // Activation function
   this->layers.push_back(layer);          // New layer added
@@ -40,21 +49,23 @@ void Net::addLayer(int l, acFunc f) {
 
 
 //Vector Net::feedForward(Vector input) {
-void Net::feedForward( const Vector &input ) {
+/*void Net::feedForward( const Vector &input ) {
   this->layers.front().forward(input); // Forwarding the input
   for (unsigned i = 1; i < layers.size(); i++) {
-    this->layers.at(i).forward(this->layers.at(i - 1).activated);
+  this->layers.at(i).forward(this->layers.at(i - 1).activated);
   }
 
-}
+  }*/
 
-void Net::feedForward(const VectorBundle &input) {
+//codesnippet netforward
+void Net::feedForward(const VectorBatch &input) {
   this->layers.front().forward(input); // Forwarding the input
 
   for (unsigned i = 1; i < layers.size(); i++) {
     this->layers.at(i).forward(this->layers.at(i - 1).activated_batch);
   }
 }
+//codesnippet end
 
 
 void Net::show() {
@@ -68,31 +79,17 @@ Categorization Net::output_vector() const {
   return Categorization( this->layers.back().activated ); // Return the final output
 }
 
-VectorBundle &Net::output_mat() {
+VectorBatch &Net::output_mat() {
   return this->layers.back().activated_batch; // Return the final output
 }
 
-void Net::backPropagate(const Vector &input, const Vector &gTruth) {
-  Vector delta = layers.back().activated - gTruth;
-  // This works for logistic regression and softmax classification but will be abstracted
-  Matrix dW(delta.size(), layers.at(layers.size()-2).activated.size(), 0);
-  dW.outerProduct(delta, layers.at(layers.size() - 2).activated);
 
-  layers.back().set_initial_deltas( dW,delta );
-
-  for (unsigned i = layers.size() - 2; i > 0; i--) {
-    layers.at(i).set_recursive_deltas(delta, layers.at(i + 1), layers.at(i - 1) );
-  }
-  layers.at(0).backward(delta, layers.at(1).weights, input);
-
-}
-
-void Net::calculate_initial_delta(VectorBundle &input, VectorBundle &gTruth) {
-  VectorBundle d_loss = d_lossFunction( gTruth, input);
+void Net::calculate_initial_delta(VectorBatch &input, VectorBatch &gTruth) {
+  VectorBatch d_loss = d_lossFunction( gTruth, input);
 
   if (layers.back().activation == 2 ) { // Softmax derivative function
     Matrix jacobian( input.item_size(), input.item_size(), 0 );
-    for(int i = 0; i < input.bundle_size(); i++ ) {
+    for(int i = 0; i < input.batch_size(); i++ ) {
       std::vector<float> one_column = input.get_vector(i);
       jacobian = smaxGrad_vec( one_column );
       Vector one_vector( jacobian.r, 0 );
@@ -106,22 +103,22 @@ void Net::calculate_initial_delta(VectorBundle &input, VectorBundle &gTruth) {
 }
 
 #if 1
-void Net::backPropagate(const VectorBundle &input, const VectorBundle &gTruth) {
-  VectorBundle delta = layers.back().activated_batch - gTruth;
+void Net::backPropagate(const VectorBatch &input, const VectorBatch &gTruth) {
+  VectorBatch delta = layers.back().activated_batch - gTruth;
 
-  VectorBundle prev = layers.at(layers.size() - 2).activated_batch;
-  Matrix dW(delta.r, prev.r, 0);
-		
+  VectorBatch prev = layers.at(layers.size() - 2).activated_batch;
+  Matrix dW(delta.c, prev.c, 0);
+	
   layers.back().update_dw(delta, prev);
 
   for (unsigned i = layers.size() - 2; i > 0; i--) {
     layers.at(i).backward(delta, layers.at(i + 1).weights, layers.at(i - 1).activated_batch);
   }
   layers.at(0).backward(delta, layers.at(1).weights, input);
-
+	
 }
 #else
-void Net::backPropagate(const VectorBundle &input, const VectorBundle &gTruth) {
+void Net::backPropagate(const VectorBatch &input, const VectorBatch &gTruth) {
 
   const int last_layer = layers.size()-1;
   for (int i = last_layer; i >=0; i--) {
@@ -155,7 +152,7 @@ void Net::backPropagate(const VectorBundle &input, const VectorBundle &gTruth) {
 #endif
 
 void Net::SGD(float lr, float momentum) {
-  int samplesize = layers.at(0).activated_batch.bundle_size();
+  int samplesize = layers.at(0).activated_batch.batch_size();
   for (int i = 0; i < layers.size(); i++) {
     // Normalize gradients to avoid exploding gradients
     Matrix deltaW = layers.at(i).dw / samplesize;
@@ -214,7 +211,7 @@ void Net::RMSprop(float lr, float momentum) {
   }
 }
 
-void Net::calcGrad(VectorBundle data, VectorBundle labels) {
+void Net::calcGrad(VectorBatch data, VectorBatch labels) {
   feedForward(data);
   backPropagate(data, labels);
 }
@@ -267,42 +264,48 @@ void Net::train(Dataset &data, Dataset &testData, int epochs, lossfn lossFuncNam
  * Calculate the los function as sum of losses
  * of the individual data point.
  */
+//codesnippet netloss
 float Net::calculateLoss(Dataset &testSplit) {
   testSplit.stack();
   feedForward(testSplit.dataBatch);
-  const VectorBundle &result = output_mat();
+  const VectorBatch &result = output_mat();
 
   float loss = 0.0;
-#if 0
-  const auto& result_vals = result.vals_vector();
-  const auto& label_vals  = testSplit.labelBatch.vals_vector();
-  for (int j = 0; j < result.r * result.c; j++) {
-    loss += lossFunction( label_vals[j], result_vals[j] );
-  }
-#else
-  for (int vec=0; vec<result.bundle_size(); vec++) { // iterate over all items
+  for (int vec=0; vec<result.batch_size(); vec++) { // iterate over all items
     const auto& one_result = result.get_vector(vec);
     const auto& one_label  = testSplit.labelBatch.get_vector(vec);
     assert( one_result.size()==one_label.size() );
     for (int i=0; i<one_result.size(); i++) // Calculate loss of result
       loss += lossFunction( one_label[i], one_result[i] );
   }
-#endif
-
-  loss = -loss / (float) result.bundle_size();
+  loss = -loss / (float) result.batch_size();
     
   return loss;
 }
+//codesnippet end
+
+
+#if 0
+const auto& result_vals = result.vals_vector();
+const auto& label_vals  = testSplit.labelBatch.vals_vector();
+for (int j = 0; j < result.r * result.c; j++) {
+  loss += lossFunction( label_vals[j], result_vals[j] );
+ }
+#else
+#endif
 
 float Net::accuracy(Dataset &valSet) {
   int correct = 0;
   int incorrect = 0;
 
-  for ( auto &valSetItem : valSet.items() ) { 
-    feedForward(valSetItem.data);
-    Categorization result( output_vector() );
+  valSet.stack();
+  feedForward(valSet.dataBatch);
+  VectorBatch& output = output_mat(); 
+  for(int idx=0; idx < output.batch_size(); idx++ ) {
+    Vector oneItem = output.get_vectorObj(idx);
+    Categorization result( oneItem );
     result.normalize();
-    if ( valSetItem.label.close_enough( result ) ) {
+    if ( valSet.items().at(idx).label.close_enough( result ) ) {
       correct++;
     } else {
       incorrect++;
@@ -334,9 +337,14 @@ void Net::saveModel(std::string path){
     file.write(	reinterpret_cast<char *>(&insize), sizeof(int) );
     file.write( reinterpret_cast<char *>(&l.activation), sizeof(int) );
 		
-    const float* weights_data = l.weights.data();
-    file.write(reinterpret_cast<char *>(&weights_data), sizeof(temp)*insize*outsize);
-    file.write(reinterpret_cast<char *>(&l.biases.vals[0]), sizeof(temp) * l.biases.size());
+    const auto& weights = l.weights;
+    file.write(reinterpret_cast<const char *>(weights.data()), sizeof(float)*weights.nelements());
+    // const float* weights_data = l.weights.data();
+    // file.write(reinterpret_cast<char *>(&weights_data), sizeof(temp)*insize*outsize);
+
+    const auto& biases = l.biases;
+    file.write(reinterpret_cast<const char*>(biases.data()), sizeof(float) * biases.size());
+    //file.write(reinterpret_cast<char *>(&l.biases.vals[0]), sizeof(temp) * l.biases.size());
   }
   std::cout << std::endl;
 

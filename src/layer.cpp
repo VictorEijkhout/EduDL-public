@@ -1,6 +1,15 @@
-//
-// Created by Ilknur on 17-Dec-20.
-//
+/****************************************************************
+ ****************************************************************
+ ****
+ **** This text file is part of the source of 
+ **** `Introduction to High-Performance Scientific Computing'
+ **** by Victor Eijkhout, copyright 2012-2021
+ ****
+ **** Deep Learning Network code 
+ **** copyright 2021 Ilknur Mustafazade
+ ****
+ ****************************************************************
+ ****************************************************************/
 
 #include "layer.h"
 #include <iostream>
@@ -11,40 +20,30 @@ Layer::Layer(int insize,int outsize)
     dw     ( Matrix(outsize,insize, 0) ),
     dW( Matrix(outsize,insize, 0) ),
     dw_velocity( Matrix(outsize,insize, 0) ),
-    biases( Vector(outsize, 1 ) ),
+    biases( Vector(insize, 1 ) ),
     biased_product( Vector(outsize, 0) ),
     activated( Vector(outsize, 0) ),
     d_activated( Vector(outsize, 0) ),
-    biased_productm( VectorBundle(outsize,insize,0) ),
-    activated_batch( VectorBundle(outsize,insize, 0) ),
-    am1a( VectorBundle(outsize,insize, 0) ),
-    d_activated_batch ( VectorBundle(outsize,insize, 0) ),
-    db( Vector(outsize, 0) ),
-    delta_mean( Vector(outsize, 0) ),
-    dl( Vector(outsize, 0) ),
-    db_velocity( Vector(outsize, 0) ) {};
+    biased_productm( VectorBatch(outsize,insize,0) ),
+    activated_batch( VectorBatch(outsize,insize, 0) ),
+    am1a( VectorBatch(outsize,insize, 0) ),
+    d_activated_batch ( VectorBatch(outsize,insize, 0) ),
+    db( Vector(insize, 0) ),
+    delta_mean( Vector(insize, 0) ),
+    dl( Vector(insize, 0) ),
+    db_velocity( Vector(insize, 0) ) {};
 
 
+//codesnippet layerforward
+void Layer::forward(const VectorBatch &prevVals) {
 
-void Layer::forward(const Vector &prevVals) {
-  weights.mvp(prevVals, biased_product); // Forward the data
-  biased_product.add(biases);
-	
-  apply_activation<Vector>.at(activation)(biased_product, activated);
-
-}
-
-void Layer::forward(const VectorBundle &prevVals) {
-
-  VectorBundle output(output_size(), prevVals.bundle_size(), 0);
-  weights.mv2p(prevVals, output); // Forward the data
-
-  output.addvh(biases); // Add the bias
-	
+  VectorBatch output( prevVals.r, weights.c, 0 );
+  prevVals.v2mp( weights, output );
+  output.addh(biases); // Add the bias
   activated_batch = output;
-  apply_activation<VectorBundle>.at(activation)(output, activated_batch);
-
+  apply_activation<VectorBatch>.at(activation)(output, activated_batch);
 }
+//codesnippet end
 
 
 
@@ -53,59 +52,47 @@ void Layer::set_initial_deltas( const Matrix &dW, const Vector &delta ) {
   db = db + delta;
 };
 
-void Layer::set_recursive_deltas( Vector &delta, const Layer &next,const Layer &prev ) {
+/*
+  void Layer::set_recursive_deltas( Vector &delta, const Layer &next,const Layer &prev ) {
   backward(delta, next.weights, prev.activated);
-};
+  };*/
 
-void Layer::backward(Vector &delta, const Matrix &W, const Vector &prev) {
 
-  W.mvpt(delta, dl); // Derivative of the weights with respect to the loss in dl
+void Layer::backward(VectorBatch &delta, const Matrix &W, const VectorBatch &prev) {
 
-  activate_gradient<Vector>.at(activation)(activated, d_activated);
+  VectorBatch dl( delta.r, W.r ); 
+  delta.v2mtp( W, dl );
 
-  delta = d_activated * dl; // Derivative of the current layer
-
-  dW.outerProduct(delta, prev);
-
-  // Summing deltas over the batch to average later
-  dw = dw + dW;
-  db = db + delta;
-
-}
-
-void Layer::backward(VectorBundle &delta, const Matrix &W, const VectorBundle &prev) {
-
-  VectorBundle dl(W.c, delta.bundle_size(), 0);
-  W.mv2pt(delta, dl); // Derivative of the weights with respect to the loss in dl
-	
-  activate_gradient<VectorBundle>.at(activation)(activated_batch, d_activated_batch); 
+  activate_gradient<VectorBatch>.at(activation)(activated_batch, d_activated_batch); 
   delta = d_activated_batch * dl; // Derivative of the current layer
 
   update_dw(delta, prev);
 }
 
-void Layer::update_dw(VectorBundle &delta, VectorBundle prevValues) {
-  dW.outer2(delta,prevValues);
+void Layer::update_dw(VectorBatch &delta, VectorBatch prevValues) {
+  prevValues.outer2(delta,dW);
   dw = dw + dW;
-  delta_mean = delta.meanv();
+  delta_mean = delta.meanh();
   db = db + delta_mean;	
 }
 
-void Layer::backward_update( const VectorBundle &prev_wdelta, const VectorBundle& prev_output,bool input_layer ) {
-  std::cout << "here" << std::endl;
+void Layer::backward_update( const VectorBatch &prev_wdelta, const VectorBatch& prev_output,bool input_layer ) {
   //  delta = a1a * wdelta;
   std::cout << activation << std::endl; 
-  activate_gradient<VectorBundle>.at(activation)(activated_batch, am1a); 
+  activate_gradient<VectorBatch>.at(activation)(activated_batch, am1a); 
   delta = am1a * prev_wdelta; // Derivative of the current layer
 
   dw = dw + dW;
-  Vector mdelta  = delta.meanv();
+  Vector mdelta  = delta.meanh();
   db = db + mdelta;
 
-  dW.outer2(delta,prev_output);
-   
+  //dW.outer2(delta,prev_output);
+  delta.outer2(prev_output, dW);
+
   if (not input_layer) {
-    wdelta = VectorBundle(input_size(), delta.bundle_size(), 0);
-    weights.mv2pt(delta, wdelta);
+    //wdelta = VectorBatch(input_size(), delta.batch_size(), 0);
+    //weights.mv2pt(delta, wdelta);
+    wdelta = VectorBatch( delta.c, weights.c, 0);
+    delta.v2tmp( weights, wdelta );
   }
 };

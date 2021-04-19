@@ -14,9 +14,9 @@ include Make.inc
 #
 LIBSRCS := vector2.cpp matrix.cpp net.cpp dataset.cpp layer.cpp funcs.cpp vector.cpp 
 ifeq "${USE_BLIS}" "1"
- LIBSRCS += matrix_impl_blis.cpp vector_impl_blis.cpp vectorbundle_impl_blis.cpp
+ LIBSRCS += matrix_impl_blis.cpp vector_impl_blis.cpp vectorbatch_impl_blis.cpp
 else
- LIBSRCS += matrix_impl_reference.cpp vector_impl_reference.cpp vectorbundle_impl_reference.cpp
+ LIBSRCS += matrix_impl_reference.cpp vector_impl_reference.cpp vectorbatch_impl_reference.cpp
 endif
 LIBOBJS = $(patsubst %.cpp,%.o,${LIBSRCS})
 

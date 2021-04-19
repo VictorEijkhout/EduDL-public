@@ -1,35 +1,49 @@
+/****************************************************************
+ ****************************************************************
+ ****
+ **** This text file is part of the source of 
+ **** `Introduction to High-Performance Scientific Computing'
+ **** by Victor Eijkhout, copyright 2012-2021
+ ****
+ **** Deep Learning Network code 
+ **** copyright 2021 Ilknur Mustafazade
+ ****
+ ****************************************************************
+ ****************************************************************/
+
 #include "vector2.h"
 #include <iostream>
 #include <vector>
 #include <algorithm>
-
+#include <cassert>
 using std::vector;
 
 /*
- * These are the vector bundle routines that do not have a optimized implementation,
+ * These are the vector batch routines that do not have a optimized implementation,
  * such as using BLIS.
  */
 
-VectorBundle::VectorBundle() { // Default constructor
+VectorBatch::VectorBatch() { // Default constructor
   r = 0;
   c = 0;
   vals.clear();
 }
 
-void VectorBundle::addvh(const Vector &y) {
-  for (int j = 0; j < c; j++) {
-    for (int i = 0; i < y.size(); i++) {
-      vals[j + c * i] += y.vals[i];
+void VectorBatch::addh(const Vector &y) { // Add y to every row
+  assert( c == y.size() );
+  for (int i = 0; i < r; i++) {
+    for (int j = 0; j < c; j++ ) {
+      vals[ i*c + j ] = y.vals[j];
     }
   }
 }
 
-Vector VectorBundle::meanv() { // Returns a vector of column-wise means
-  Vector mean(r, 0);
+Vector VectorBatch::meanh() { // Returns a vector of row-wise means
+  Vector mean(c, 0);
   float avg;
-  for (int i = 0; i < r; i++) {
+  for (int i = 0; i < c; i++) {
     avg = 0.0;
-    for (int j = 0; j < c; j++) {
+    for (int j = 0; j < r; j++) {
       avg += vals[i * c + j];
     }
     mean.vals[i] = avg;
@@ -38,7 +52,7 @@ Vector VectorBundle::meanv() { // Returns a vector of column-wise means
 }
 
 
-VectorBundle &VectorBundle::operator=(const VectorBundle &m2) { // Overloading the = operator
+VectorBatch &VectorBatch::operator=(const VectorBatch &m2) { // Overloading the = operator
   r = m2.r;
   c = m2.c;
 
@@ -48,32 +62,32 @@ VectorBundle &VectorBundle::operator=(const VectorBundle &m2) { // Overloading t
 }
 
 
-VectorBundle VectorBundle::operator-(const VectorBundle &m2) {
-  VectorBundle out(m2.r, m2.c, 0);
+VectorBatch VectorBatch::operator-(const VectorBatch &m2) {
+  VectorBatch out(m2.r, m2.c, 0);
   for (int i = 0; i < m2.r * m2.c; i++) {
     out.vals[i] = this->vals[i] - m2.vals[i];
   }
   return out;
 }
 
-VectorBundle VectorBundle::operator*(const VectorBundle &m2) { // Hadamard product
-  VectorBundle out(m2.r, m2.c, 0);
+VectorBatch VectorBatch::operator*(const VectorBatch &m2) { // Hadamard product
+  VectorBatch out(m2.r, m2.c, 0);
   for (int i = 0; i < m2.r * m2.c; i++) {
     out.vals[i] = this->vals[i] * m2.vals[i];
   }
   return out;
 }
 
-VectorBundle VectorBundle::operator/(const VectorBundle &m2) { // Hadamard product
-  VectorBundle out(m2.r, m2.c, 0);
+VectorBatch VectorBatch::operator/(const VectorBatch &m2) { // Hadamard product
+  VectorBatch out(m2.r, m2.c, 0);
   for (int i = 0; i < m2.r * m2.c; i++) {
     out.vals[i] = this->vals[i] / m2.vals[i];
   }
   return out;
 }
 
-VectorBundle VectorBundle::operator-() {
-  VectorBundle result = *this;
+VectorBatch VectorBatch::operator-() {
+  VectorBatch result = *this;
   for (int i = 0; i < r * c; i++) {
     result.vals[i] = -vals[i];
   }
@@ -81,16 +95,16 @@ VectorBundle VectorBundle::operator-() {
   return result;
 };
 
-VectorBundle operator/(const VectorBundle &m, const float &c) {
-  VectorBundle o = m;
+VectorBatch operator/(const VectorBatch &m, const float &c) {
+  VectorBatch o = m;
   for (int i = 0; i < o.r * o.c; i++) {
     o.vals[i] = o.vals[i] / c;
   }
   return o;
 }
 
-VectorBundle operator*(const float &c, const VectorBundle &m) {
-  VectorBundle o = m;
+VectorBatch operator*(const float &c, const VectorBatch &m) {
+  VectorBatch o = m;
   for (int i = 0; i < o.r * o.c; i++) {
     o.vals[i] = o.vals[i] * c;
   }

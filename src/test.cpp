@@ -1,3 +1,16 @@
+/****************************************************************
+ ****************************************************************
+ ****
+ **** This text file is part of the source of 
+ **** `Introduction to High-Performance Scientific Computing'
+ **** by Victor Eijkhout, copyright 2012-2021
+ ****
+ **** Deep Learning Network code 
+ **** copyright 2021 Ilknur Mustafazade
+ ****
+ ****************************************************************
+ ****************************************************************/
+
 /*
  * A simple test neural network
  * 
@@ -19,11 +32,19 @@ using namespace std;
 
 #if 0
 int main(){
-  srand(time(NULL));
+  //srand(time(NULL));
+	
+  VectorBatch a(3,4,1); // Two feature vectors, each vector sized 4
+  VectorBatch b(3,5,1);
+  a.show();
 
-  Net bar(0);
-  bar.loadModel("weights.bin");	
-  bar.info();	
+  Net model(4);
+  model.addLayer(2,RELU);
+  model.addLayer(5,SMAX);
+	
+  model.show();
+  model.feedForward(a);
+  model.backPropagate(a, b);	
 
   return 0;
 }
