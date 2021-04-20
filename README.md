@@ -18,6 +18,17 @@ Currently there are two main programs that can be built with the supplied Makefi
 
     make testdl
     make posneg
+    
+These test programs are driven by commandline options; run 
+
+    ./testdl -h
+    ./posneg -h
+    
+to see available options.
+
+The `testdl` parses the MNIST dataset, and you can test it by:
+
+    ./testdl -e 4 -l 4 -d ../../mnist/
 
 You can make your own network by taking either of these as example.
 More thorough documentation is forthcoming.
