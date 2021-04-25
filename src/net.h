@@ -26,33 +26,38 @@ enum lossfn{cce, mse}; // categorical cross entropy, mean squared error
 
 class Net {
 private:
-    int inR; // input dimensions
-    int inC;
-    int samples;
-    std::vector<Layer> layers;
-    std::function<float( const float& groundTruth, const float& result)> lossFunction;
-	std::function<VectorBatch( VectorBatch& groundTruth, VectorBatch& result )> d_lossFunction;
+  int inR; // input dimensions
+  int inC;
+  int samples;
+  std::vector<Layer> layers;
+  std::function<float( const float& groundTruth, const float& result)> lossFunction;
+  std::function<VectorBatch( VectorBatch& groundTruth, VectorBatch& result )> d_lossFunction;
 public:
-    Net(int s); // input shape
-    Net( const Dataset &d );
-    void addLayer(int l, acFunc activation); // length of the dense layer
-    void show(); // Show all weights
-    Categorization output_vector() const;
-    VectorBatch &output_mat();
+  Net(int s); // input shape
+  Net( const Dataset &d );
+  void addLayer(int l, acFunc activation); // length of the dense layer
+  void addLayer( int l,
+		 std::function< void(const VectorBatch&,VectorBatch&) > apply_activation_batch,
+		 std::function< void(const VectorBatch&,VectorBatch&) > activate_gradient_batch
+		 );
 
-    void feedForward( const Vector& );
-    void feedForward( const VectorBatch& );
+  void show(); // Show all weights
+  Categorization output_vector() const;
+  VectorBatch &output_mat();
 
-    void calcGrad(Dataset data);
-    void calcGrad(VectorBatch data, VectorBatch labels);
+  void feedForward( const Vector& );
+  void feedForward( const VectorBatch& );
 
-    void backPropagate(const Vector &input, const Vector &gTruth);
-    void backPropagate(const VectorBatch &input, const VectorBatch &gTruth);
+  void calcGrad(Dataset data);
+  void calcGrad(VectorBatch data, VectorBatch labels);
+
+  void backPropagate(const Vector &input, const Vector &gTruth);
+  void backPropagate(const VectorBatch &input, const VectorBatch &gTruth);
 	
-	void calculate_initial_delta( VectorBatch& result, VectorBatch& gTruth);
+  void calculate_initial_delta( VectorBatch& result, VectorBatch& gTruth);
 
-    void SGD(float lr, float momentum);
-    void RMSprop(float lr, float momentum);
+  void SGD(float lr, float momentum);
+  void RMSprop(float lr, float momentum);
 
   /*
    * Various settings
@@ -82,27 +87,27 @@ public:
     [this] ( float lr, float momentum ) { RMSprop(lr, momentum); }
   };
 	
-    void train(Dataset &trainData, Dataset &testData, int epochs, lossfn lossFunc, int batchSize);
+  void train(Dataset &trainData, Dataset &testData, int epochs, lossfn lossFunc, int batchSize);
 #if MPINN
-	void trainmpi(Dataset &trainData, Dataset &testData, float lr, int epochs, opt Optimizer, lossfn lossFunc, int batchSize, float momentum = 0.0, float decay = 0.0);
+  void trainmpi(Dataset &trainData, Dataset &testData, float lr, int epochs, opt Optimizer, lossfn lossFunc, int batchSize, float momentum = 0.0, float decay = 0.0);
 #endif
-	float calculateLoss(Dataset &testSplit);
-    float accuracy(Dataset& valSet);
+  float calculateLoss(Dataset &testSplit);
+  float accuracy(Dataset& valSet);
 
-    inline static std::vector< std::function< float( const float& groundTruth, const float& result) > > lossFunctions{
-	[] ( const float &gT, const float &result ) { return gT * log(result); }, // Categorical Cross Entropy
-	[] ( const float &gT, const float &result ) { return pow(gT - result, 2); }, // Mean Squared Error
-	};
+  inline static std::vector< std::function< float( const float& groundTruth, const float& result) > > lossFunctions{
+    [] ( const float &gT, const float &result ) { return gT * log(result); }, // Categorical Cross Entropy
+    [] ( const float &gT, const float &result ) { return pow(gT - result, 2); }, // Mean Squared Error
+  };
 
-	inline static std::vector< std::function< VectorBatch( VectorBatch& groundTruth, VectorBatch& result) > > d_lossFunctions{
-	[] ( VectorBatch &gT, VectorBatch &result ) { return -gT/result/result.batch_size(); },
-	[] ( VectorBatch &gT, VectorBatch &result ) { return -2 * ( gT-result)/result.batch_size(); },
-	};
+  inline static std::vector< std::function< VectorBatch( VectorBatch& groundTruth, VectorBatch& result) > > d_lossFunctions{
+    [] ( VectorBatch &gT, VectorBatch &result ) { return -gT/result/result.batch_size(); },
+    [] ( VectorBatch &gT, VectorBatch &result ) { return -2 * ( gT-result)/result.batch_size(); },
+  };
 
-	void saveModel(std::string path);
-	void loadModel(std::string path);
+  void saveModel(std::string path);
+  void loadModel(std::string path);
 	
-	void info();
+  void info();
 };
 
 void loadingBar(int currBatch, int batchNo, float acc, float loss);

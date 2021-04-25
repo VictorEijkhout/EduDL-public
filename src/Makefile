@@ -24,15 +24,23 @@ LIBOBJS = $(patsubst %.cpp,%.o,${LIBSRCS})
 	@echo "compiling $<"
 	@${CXX} -c $< \
 	    -I${CXXOPTS}/include \
-	    ` if [ "${USE_BLIS}" = "1" ] ; then echo "-DBLISNN -I${BLIS_INC_DIR}" ; fi `
+	    ` if [ "${USE_BLIS}" = "1" ] ; then echo "-DBLISNN -I${BLIS_INC_DIR}" ; fi ` \
+	    ` if [ "${USE_GSL}" = "1" ] ; then echo "-DUSE_GSL -I${GSL_INC_DIR}" ; fi `
 
-dataset.o funcs.o layer.o matrix.o net.o vector2.o : vector2.h
+vector2.o vector_impl_blis.o vectorbatch_impl_blis.o : vector2.h
 dataset.o layer.o matrix.o net.: matrix.h
 dataset.o : dataset.h 
 funcs.o : funcs.h matrix.h
 layer.o : layer.h funcs.h
 net.o : net.h dataset.h layer.h
 test.o : matrix.h net.h dataset.h layer.h funcs.h
+#
+# implementation specific files have to be recompiled
+# if we tinker with settings
+#
+BLAS_FILES = $(wildcard *_impl_*.cpp)
+BLAS_OBJS = $(patsubst %.cpp,%.o,${BLAS_FILES})
+${BLAS_OBJS} : Make.inc
 
 PROGRAMS = testdl posneg mpidl
 info ::

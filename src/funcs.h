@@ -17,26 +17,50 @@
 #include "vector.h"
 #include "vector2.h"
 
+#ifdef USE_GSL
+#include "gsl/gsl-lite.hpp"
+#endif
+
 enum acFunc{RELU,SIG,SMAX,NONE};
 
-template <typename V>
-void relu_io    (const V &i, V &v);
-template <typename V>
-void sigmoid_io (const V &i, V &v);
-template <typename V>
-void softmax_io (const V &i, V &v);
-template <typename V>
-void linear_io    (const V &i, V &v);
+//template <typename VectorBatch>
+void relu_io    (const VectorBatch &i, VectorBatch &v);
+//template <typename VectorBatch>
+void sigmoid_io (const VectorBatch &i, VectorBatch &v);
+//template <typename VectorBatch>
+void softmax_io (const VectorBatch &i, VectorBatch &v);
+//template <typename VectorBatch>
+void linear_io    (const VectorBatch &i, VectorBatch &v);
+
+//template <typename VectorBatch>
+void reluGrad_io(const VectorBatch &m, VectorBatch &a);
+//template <typename VectorBatch>
+void sigGrad_io (const VectorBatch &m, VectorBatch &a);
+//template <typename VectorBatch>
+void smaxGrad_io(const VectorBatch &m, VectorBatch &a);
+//template <typename VectorBatch>
+void linGrad_io	(const VectorBatch &m, VectorBatch &a);
+
+#ifdef USE_GSL
+Matrix smaxGrad_vec( const gsl::span<float> &v);
+#else
+Matrix smaxGrad_vec( const std::vector<float> &v);
+#endif
 
 template <typename V>
-void reluGrad_io(const V &m, V &a);
+static inline std::vector< std::function< void(const V&, V&) > > apply_activation{
+  [] ( const V &v, V &a ) { relu_io(v,a); },
+  [] ( const V &v, V &a ) { sigmoid_io(v,a); },
+  [] ( const V &v, V &a ) { softmax_io(v,a); },
+  [] ( const V &v, V &a ) { linear_io(v,a); }
+};
+  	
 template <typename V>
-void sigGrad_io (const V &m, V &a);
-template <typename V>
-void smaxGrad_io(const V &m, V &a);
-template <typename V>
-void linGrad_io	(const V &m, V &a);
-
-Matrix smaxGrad_vec(std::vector<float> &v);
+static inline std::vector< std::function< void(const V&, V&) > > activate_gradient{
+  [] (  const V &m, V &v ) { reluGrad_io(m,v); },
+  [] (  const V &m, V &v ) { sigGrad_io(m,v); },
+  [] (  const V &m, V &v ) { smaxGrad_io(m,v); },
+  [] (  const V &m, V &v ) { linGrad_io(m,v); }
+};
 
 #endif //SRC_FUNCS_H
