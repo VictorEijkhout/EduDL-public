@@ -70,8 +70,10 @@ void Layer::forward(const VectorBatch &prevVals) {
   assert( prevVals.notnan() ); assert( prevVals.notinf() );
   prevVals.v2mp( weights, activated_batch );
   assert( activated_batch.notnan() ); assert( activated_batch.notinf() );
+
   activated_batch.addh(biases); // Add the bias
   assert( activated_batch.notnan() ); assert( activated_batch.notinf() );
+
   apply_activation_batch(activated_batch, activated_batch);
   assert( activated_batch.notnan() ); assert( activated_batch.notinf() );
 }
@@ -86,10 +88,6 @@ void Layer::backward(const VectorBatch &prev_delta, const Matrix &W, const Vecto
 }
 
 void Layer::update_dw( const VectorBatch &delta, const VectorBatch& prevValues) {
-  //prevValues.outer2(delta,dW);
-  //dw = dw + dW;
-  //delta_mean = delta.meanh();
-  //db = db + delta_mean;	
   prevValues.outer2( delta, dw );
   weights.axpy( 1.,dw );
   db = delta.meanh();

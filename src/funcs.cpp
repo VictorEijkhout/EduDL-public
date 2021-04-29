@@ -26,6 +26,7 @@ using std::vector;
 
 //template <typename VectorBatch>
 void relu_io(const VectorBatch &mm, VectorBatch &a) {
+
   VectorBatch m(mm);
   assert( a.item_size()==m.item_size() );
   assert( a.batch_size()==m.batch_size() );
@@ -43,6 +44,7 @@ void relu_io(const VectorBatch &mm, VectorBatch &a) {
 //codesnippet netsigmoid
 //template <typename VectorBatch>
 void sigmoid_io(const VectorBatch &m, VectorBatch &a) {
+
   a.vals_vector().assign(m.vals_vector().begin(),m.vals_vector().end());
   for (int i = 0; i < m.batch_size() * m.item_size(); i++) {
     // a.vals_vector()[i]*=(a.vals_vector()[i]>0); // values will be 0 if negative, and equal to themselves if positive
@@ -54,41 +56,46 @@ void sigmoid_io(const VectorBatch &m, VectorBatch &a) {
 //template <typename VectorBatch>
 void softmax_io(const VectorBatch &m, VectorBatch &a) {
 
-  vector<float> nB(m.batch_size());
-  vector<float> mVectorBatch(m.batch_size());
+  const int ar = a.item_size(), ac = a.batch_size();
+  vector<float> nB(ac,0);
+  vector<float> mVectorBatch(ac,0);
 
-  for (int i = 0; i < m.batch_size(); i++) {
+  for (int i = 0; i < ac; i++) {
     nB.at(i) = 0.0;
     mVectorBatch.at(i) = -9999;
   }
 
-  for (int i = 0; i < m.batch_size(); i++) {
-    for (int j = 0; j < m.item_size(); j++) {
-      if (m.vals_vector().at(i + m.batch_size() * j) > mVectorBatch.at(i)) {
-	mVectorBatch.at(i) = m.vals_vector().at(i + m.batch_size() * j);
+  const auto& mvals = m.vals_vector();
+  auto& avals = a.vals_vector();
+  for (int j = 0; j < ac; j++) {
+    for (int i = 0; i < ar; i++) {
+      if (mvals.at(INDEXc(i,j,ar,ac)) > mVectorBatch.at(j)) {
+	mVectorBatch.at(j) = mvals.at(INDEXc(i,j,ar,ac));
       }
     }
   }
 
-  for (int i = 0; i < m.batch_size(); i++) {
-    for (int j = 0; j < m.item_size(); j++) {
-      a.vals_vector().at(i + m.batch_size() * j) = m.vals_vector().at(i + m.batch_size() * j) - mVectorBatch.at(i);
-      a.vals_vector().at(i + m.batch_size() * j) = exp(a.vals_vector().at(i + m.batch_size() * j));
-      nB.at(i) += a.vals_vector().at(i + m.batch_size() * j);
+  for (int j = 0; j < ac; j++) {
+    for (int i = 0; i < ar; i++) {
+      // if ( avals.at(INDEXc(i,j,ar,ac))<0.f )
+      // 	avals.at(INDEXc(i,j,ar,ac)) = 0.f;
+      avals.at(INDEXc(i,j,ar,ac)) = mvals.at(INDEXc(i,j,ar,ac)) - mVectorBatch.at(j);
+      avals.at(INDEXc(i,j,ar,ac)) = exp(avals.at(INDEXc(i,j,ar,ac)));
+      nB.at(j) += avals.at(INDEXc(i,j,ar,ac));
     }
   }
 
-  for (int i = 0; i < m.batch_size(); i++) {
-    for (int j = 0; j < m.item_size(); j++) {
-      a.vals_vector().at(i + m.batch_size() * j) = a.vals_vector().at(i + m.batch_size() * j) / nB.at(i);
+  for (int j = 0; j < ac; j++) {
+    for (int i = 0; i < ar; i++) {
+      avals.at(INDEXc(i,j,ar,ac)) = avals.at(INDEXc(i,j,ar,ac)) / nB.at(j);
     }
   }
 
-  for (int j=0; j < m.vals_vector().size(); j++) {
-    if (a.vals_vector().at(j) <= 1e-7)
-      a.vals_vector().at(j) = 1e-7;
-    if (a.vals_vector().at(j) >= 1 - 1e-7)
-      a.vals_vector().at(j) = 1 - 1e-7;
+  for (int j=0; j < mvals.size(); j++) {
+    if (avals.at(j) <= 1e-7)
+      avals.at(j) = 1e-7;
+    if (avals.at(j) >= 1 - 1e-7)
+      avals.at(j) = 1 - 1e-7;
   }
 
 }
