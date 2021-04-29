@@ -20,7 +20,7 @@
 #include <initializer_list>
 
 class Matrix{
-public: // should really become private
+private: // should really become private
   std::vector<float> mat;
   int r;
   int c;
@@ -28,6 +28,8 @@ public:
   Matrix();
   Matrix(int nRows, int nCols, int rand);
   // for mpl
+  std::vector<float> &values() { return mat; };
+  const std::vector<float> &values() const { return mat; };
   float* data() ;
   const float* const data() const;
   int nelements() const {

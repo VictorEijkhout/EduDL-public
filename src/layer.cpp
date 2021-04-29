@@ -13,67 +13,86 @@
 
 #include "layer.h"
 #include <iostream>
+using std::cout;
+using std::endl;
 
 Layer::Layer() {};
 Layer::Layer(int insize,int outsize)
   : weights( Matrix(outsize,insize,1) ),
     dw     ( Matrix(outsize,insize, 0) ),
-    dW( Matrix(outsize,insize, 0) ),
+    //dW( Matrix(outsize,insize, 0) ),
     dw_velocity( Matrix(outsize,insize, 0) ),
-    biases( Vector(insize, 1 ) ),
-    biased_product( Vector(outsize, 0) ),
+    biases( Vector(outsize, 1 ) ),
+    // biased_product( Vector(outsize, 0) ),
     activated( Vector(outsize, 0) ),
     d_activated( Vector(outsize, 0) ),
-    biased_productm( VectorBatch(outsize,insize,0) ),
-    activated_batch( VectorBatch(outsize,insize, 0) ),
-    d_activated_batch ( VectorBatch(outsize,insize, 0) ),
+    delta( VectorBatch(outsize,1) ),
+    // biased_productm( VectorBatch(outsize,insize,0) ),
+    //    activated_batch( VectorBatch(outsize,1, 0) ),
+    //    d_activated_batch ( VectorBatch(outsize,insize, 0) ),
     db( Vector(insize, 0) ),
-    delta_mean( Vector(insize, 0) ),
-    dl( VectorBatch(insize, 0) ),
+    // delta_mean( Vector(insize, 0) ),
+    dl( VectorBatch(insize, 1) ),
     db_velocity( Vector(insize, 0) ) {};
 
+/*
+ * Resize temporaries to reflect current batch size
+ */
+void Layer::allocate_batch_specific_temporaries(int batchsize) {
+  const int insize = weights.colsize(), outsize = weights.rowsize();
+
+  activated_batch.allocate( batchsize,outsize );
+  d_activated_batch.allocate( batchsize,outsize );
+  dl.allocate( batchsize, outsize );
+  delta.allocate( batchsize,outsize );
+};
+
+void Layer::set_activation(acFunc f) {
+  activation = f;
+  apply_activation_batch  = apply_activation<VectorBatch>.at(f);
+  activate_gradient_batch = activate_gradient<VectorBatch>.at(f);
+};
+void Layer::set_activation
+( std::function< void(const VectorBatch&,VectorBatch&) > apply,
+  std::function< void(const VectorBatch&,VectorBatch&) > activate ) {
+  activation = acFunc::RELU;
+  apply_activation_batch  = apply;
+  activate_gradient_batch = activate;
+};
 
 //codesnippet layerforward
 void Layer::forward(const VectorBatch &prevVals) {
-  VectorBatch output( prevVals.batch_size(), weights.colsize(), 0 );
-  prevVals.v2mp( weights, output );
-  output.addh(biases); // Add the bias
-  activated_batch = output;
-  //apply_activation<VectorBatch>.at(activation)(output, activated_batch);
-  apply_activation_batch(output, activated_batch);
+#ifdef DEBUG
+  cout << "Forward layer " << layer_number
+       << ": " << input_size() << "->" << output_size() << endl;
+#endif
+
+  assert( prevVals.notnan() ); assert( prevVals.notinf() );
+  prevVals.v2mp( weights, activated_batch );
+  assert( activated_batch.notnan() ); assert( activated_batch.notinf() );
+  activated_batch.addh(biases); // Add the bias
+  assert( activated_batch.notnan() ); assert( activated_batch.notinf() );
+  apply_activation_batch(activated_batch, activated_batch);
+  assert( activated_batch.notnan() ); assert( activated_batch.notinf() );
 }
 //codesnippet end
 
+void Layer::backward(const VectorBatch &prev_delta, const Matrix &W, const VectorBatch &prev) {
 
-
-void Layer::set_initial_deltas( const Matrix &dW, const Vector &delta ) {
-  dw = dw + dW;
-  db = db + delta;
-};
-
-/*
-  void Layer::set_recursive_deltas( Vector &delta, const Layer &next,const Layer &prev ) {
-  backward(delta, next.weights, prev.activated);
-  };*/
-
-
-void Layer::backward(VectorBatch &delta, const Matrix &W, const VectorBatch &prev) {
-
-  //VectorBatch dl( delta.r, W.r ); 
-  dl.resize( delta.batch_size(), W.rowsize() ); 
-  delta.v2mtp( W, dl );
-
-  //activate_gradient<VectorBatch>.at(activation)(activated_batch, d_activated_batch); 
+  prev_delta.v2mtp( W, dl );
   activate_gradient_batch(activated_batch, d_activated_batch); 
-  delta = d_activated_batch * dl; // Derivative of the current layer
-
+  delta.hadamard( d_activated_batch,dl ); // Derivative of the current layer
   update_dw(delta, prev);
 }
 
-void Layer::update_dw(VectorBatch &delta, VectorBatch prevValues) {
-  prevValues.outer2(delta,dW);
-  dw = dw + dW;
-  delta_mean = delta.meanh();
-  db = db + delta_mean;	
+void Layer::update_dw( const VectorBatch &delta, const VectorBatch& prevValues) {
+  //prevValues.outer2(delta,dW);
+  //dw = dw + dW;
+  //delta_mean = delta.meanh();
+  //db = db + delta_mean;	
+  prevValues.outer2( delta, dw );
+  weights.axpy( 1.,dw );
+  db = delta.meanh();
+  biases.add( db );
 }
 

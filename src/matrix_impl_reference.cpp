@@ -24,11 +24,13 @@ Matrix::Matrix(int nRows, int nCols, int random = 0)
 
   mat = vector<float>(nRows * nCols);
   int i, j;
-  if (random==0){
+  if (random==0) {
     std::fill(mat.begin(), mat.end(), 0);
-  }else if (random==1){
+  } else if (random==1) {
+    //std::fill(mat.begin(), mat.end(), .5);
     for (i=0; i<nRows * nCols;i++){
-      mat[i] = -0.1 + static_cast <float> (rand()) /( static_cast <float>(RAND_MAX/(0.1-(-0.1))));
+      //mat[i] = -0.1 + static_cast <float> (rand()) /( static_cast <float>(RAND_MAX/(0.1-(-0.1))));
+      mat[i] = -0.1 + static_cast <float> (rand()) /( static_cast <float>(RAND_MAX) );
     }
   }
 

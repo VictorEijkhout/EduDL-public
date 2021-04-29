@@ -13,7 +13,10 @@
 
 #include "dataset.h"
 #include <iostream>
+using std::cout;
+using std::endl;
 #include <string>
+using std::string;
 #include <vector>
 using std::vector;
 
@@ -23,64 +26,87 @@ using std::vector;
 
 #define IMSIZE 28
 
-Dataset::Dataset( std::vector<dataItem> v )
-  : _items(v) {
-  if (v.size()>0)
-    nclasses = v.at(0).label_size();
-};
-
-int Dataset::size() const {
-  return _items.size();
-}
-
-/*!
- * What is the size of the feature vector in this dataset?
- */
-int Dataset::data_size() const { return _items.at(0).data_size(); };
-/*!
- * What is the number of categories in the labels of this dataset?
- */
-int Dataset::label_size() const { return _items.at(0).label_size(); };
-
-/*!
- * Get the i-th data object 
- */
-const Vector& Dataset::data(int i) const {
-  return _items.at(i).data;
-};
-/*!
- * Get the features of i-th data object 
- */
-const vector<float>& Dataset::data_vals(int i) const {
-  return _items.at(i).data_values();
-};
-//! Same, of the stacked object
-vector<float> Dataset::stacked_data_vals(int i) const {
-  //return dataBatch.get_col(i);
-  return dataBatch.get_row(i);
-};
-
-/*!
- * Get the categorization of i-th data object 
- */
-const vector<float>& Dataset::label_vals(int i) const {
-  return _items.at(i).label_values();
-};
-//! Same, of the stacked object
-vector<float> Dataset::stacked_label_vals(int i) const {
-  //return labelBatch.get_col(i);
-  return labelBatch.get_row(i);
+Dataset::Dataset( std::vector<dataItem> dv ) {
+  for ( const auto& v : dv )
+    push_back(v);
+  // : _items(v) {
+  // if (v.size()>0)
+  //   nclasses = v.at(0).label_size();
 };
 
 /*!
  * Add a new data item, and check its consistency with previous items
  */
 void Dataset::push_back(dataItem it) {
-  if (nclasses>0 and it.label_size()!=nclasses)
-    throw("number of classes mismatch");
+  if (nclasses>0 and it.label_size()!=nclasses) {
+    cout << "Set dimensionality " << nclasses
+         << " does not match item size " << it.label_size() << endl;
+    throw( string("Fail to add item to dataset") );
+  }
   if (nclasses==0)
     nclasses = it.label_size();
-  _items.push_back(it);
+  dataBatch.add_vector( it.data_values() );
+  labelBatch.add_vector( it.label_values() );
+  //_items.push_back(it);
+};
+
+dataItem Dataset::item(int i) const {
+  return dataItem( data_vals(i),label_vals(i) );
+};
+
+int Dataset::size() const {
+  int ds = dataBatch.batch_size(), ls = labelBatch.batch_size();
+  assert( ds==ls );
+  return ds;
+}
+
+/*!
+ * What is the size of the feature vector in this dataset?
+ */
+int Dataset::data_size() const {
+  if (dataBatch.batch_size()==0)
+    throw( string("Can not get data size for empty dataset") );
+  return dataBatch.item_size();
+};
+
+/*!
+ * What is the number of categories in the labels of this dataset?
+ */
+int Dataset::label_size() const {
+  if (labelBatch.batch_size()==0)
+    throw( string("Can not get label size for empty dataset") );
+  return labelBatch.item_size();
+}
+
+/*!
+ * Get the i-th data object 
+ */
+const Vector& Dataset::data(int i) const {
+  throw( string("Do not use Dataset::data") );
+  //  return _items.at(i).data;
+};
+/*!
+ * Get the features of i-th data object 
+ */
+const vector<float> Dataset::data_vals(int i) const {
+  return dataBatch.extract_vector(i);
+};
+/*!
+ * Get the categorization of i-th data object 
+ */
+const vector<float> Dataset::label_vals(int i) const {
+  return labelBatch.extract_vector(i);
+};
+//! Same, of the stacked object
+vector<float> Dataset::stacked_data_vals(int i) const {
+  throw( string("Do not use Dataset::stacked_data_vals") );
+  return dataBatch.get_row(i);
+};
+
+//! Same, of the stacked object
+vector<float> Dataset::stacked_label_vals(int i) const {
+  throw( string("Do not use Dataset::stacked_label_vals") );
+  return labelBatch.get_row(i);
 };
 
 int Dataset::readTest(std::string dataPath) {
@@ -101,7 +127,7 @@ int Dataset::readTest(std::string dataPath) {
 
 
     if (!file) { // File checking
-      std::cout << "Error opening file" << std::endl;
+      cout << "Error opening file" << endl;
       return -2; // Arbitrary error code
     } 
     for (int k = 0; k < 1000; k++) {
@@ -111,7 +137,9 @@ int Dataset::readTest(std::string dataPath) {
       for (int i = 0; i < IMSIZE; i++) {
 	for (int j = 0; j < IMSIZE; j++) {
 	  // Transfer from buffer into matrix
-	  imageVec.vals[i * IMSIZE + j] = static_cast<float>( temp[i * IMSIZE + j] );
+	  float *i_data = imageVec.data();
+	  *( i_data + i * IMSIZE + j ) // imageVec.vals[i * IMSIZE + j]
+	    = static_cast<float>( temp[i * IMSIZE + j] );
 	}
       }
       fseek(file, k * IMSIZE * IMSIZE, SEEK_SET); // Seek to the kth image bytes
@@ -119,7 +147,7 @@ int Dataset::readTest(std::string dataPath) {
       Categorization label(10,dataid);
 
       dataItem x = {imageVec, label}; // Initialize an item with the data and the label in it
-      _items.push_back(x); // Store in the vector
+      push_back(x); // Store in the vector
 
     }
     fclose(file);
@@ -133,41 +161,30 @@ void Dataset::shuffle() {
   std::seed_seq seed{r(), r(), r(), r(), r(), r(), r(), r()}; // Seed
   std::mt19937 eng1(seed); // Randomizer engine
 
-  std::shuffle(begin(_items), end(_items), eng1); // Shuffle the dataset
+  throw( string("shuffling doesn't work") );
+  //    std::shuffle(begin(_items), end(_items), eng1); // Shuffle the dataset
   return; // todo add return codes instead of printing
 }
 
 
-std::vector<Dataset> Dataset::batch(int n) {
+std::vector<Dataset> Dataset::batch(int n) const {
+
   std::vector<Dataset> batches;
-  int noItems = this->_items.size();
-  int noBatches = 0;
-  std::vector<int> lines;
-
-  std::size_t const half_size = lines.size() / 2;
-  std::vector<int> split_lo(lines.begin(), lines.begin() + half_size);
-  std::vector<int> split_hi(lines.begin() + half_size, lines.end());
-
-  Dataset batchN;
-
-  while (noItems >= n) {
-    batchN._items = std::vector<dataItem>(
-					  this->_items.begin() + noBatches * n, this->_items.begin() + noBatches * n + n);
-    noBatches++;
-    noItems -= n;
-    batches.push_back(batchN);
-  }
-
-  if (noItems) { // If there are any remaining items, batch them up also
-    batchN._items = std::vector<dataItem>(this->_items.begin() + noBatches * n, this->_items.end());
-    noBatches++;
-    batches.push_back(batchN);
+  int nitems = size();
+  int nbatches = nitems/n + ( nitems%n>0 ? 1 : 0 );
+  for (int b=0; b<nbatches; b++) {
+    Dataset batch;
+    for (int i=b*n; i<(b+1)*n && i<nitems; i++) {
+      batch.push_back( item(i) );
+    }
+    batches.push_back(batch);
   }
 
   return batches;
 }
 
 void Dataset::stack() { // Stacks vectors horizontally (column-wise) in a Matrix object
+  throw( string("Stacking no longer needed") );
   //dataBatch  = VectorBatch( data_size(),  size(), 0);
   //labelBatch = VectorBatch( label_size(), size(), 0);
     
@@ -189,16 +206,35 @@ void Dataset::stack() { // Stacks vectors horizontally (column-wise) in a Matrix
 /*!
  * Split a dataset into a training and testing dataset
  */
-std::pair< Dataset,Dataset > Dataset::split(float trainFraction) {
-  int dataset_size = _items.size();
-  int trainSize = ceil( static_cast<float>( dataset_size ) * trainFraction);
-  int testSize = dataset_size - trainSize;
+std::pair< Dataset,Dataset > Dataset::split(float trainFraction) const {
+  int dataset_size = size(); // _items.size();
+  int testSize{0},trainSize;
+  while ( true ) {
+    trainSize= ceil( static_cast<float>( dataset_size ) * trainFraction);
+    testSize = dataset_size - trainSize;
+    if ( testSize>0 ) break;
+    trainFraction *= .9;
+  }
 
-  Dataset trainSplit
-    ( std::vector<dataItem>(this->_items.begin(), this->_items.begin() + trainSize) );
+  Dataset trainSplit;    
+#ifdef DEBUG
+  cout << "split into " << trainSize << "+" << testSize << endl;
+#endif
+  for (int i=0; i<trainSize; i++) {
+    const auto& di = item(i);
+    trainSplit.push_back(di);
+  }
+  Dataset testSplit;
+  for (int i=trainSize; i<trainSize+testSize; i++) {
+    const auto& di = item(i);
+    testSplit.push_back(di);
+  }
 
-  Dataset testSplit
-    ( std::vector<dataItem>(this->_items.begin() + trainSize, this->_items.end()) );
+  // Dataset trainSplit
+  //   ( std::vector<dataItem>(this->_items.begin(), this->_items.begin() + trainSize) );
+
+  // Dataset testSplit
+  //   ( std::vector<dataItem>(this->_items.begin() + trainSize, this->_items.end()) );
 
   return std::make_pair(trainSplit,testSplit);
 }

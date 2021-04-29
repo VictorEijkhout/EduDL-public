@@ -33,9 +33,8 @@ Vector::Vector(int s, int init) {
   bli_sscalv( BLIS_NO_CONJUGATE, s, &scal_fac, &vals[0], 1 );
 }
 
-void Vector::add(Vector &v1) {
+void Vector::add( const Vector &v1 ) {
   assert(v1.size()==this->size());
-
   bli_saddv( BLIS_NO_CONJUGATE, size(), &v1.vals[0], 1, &vals[0], 1 );
 }
 

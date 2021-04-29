@@ -30,12 +30,11 @@ Vector::Vector(int s, int init) {
 
 }
 
-void Vector::add(Vector &v1) {
+void Vector::add( const Vector &v1 ) {
   assert(v1.size()==this->size());
   for (int i=0; i<size(); i++){
     vals[i] += v1.vals[i];
   }
-
 }
 
 void Vector::set_ax( float a, Vector &x) {

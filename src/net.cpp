@@ -11,12 +11,19 @@
  ****************************************************************
  ****************************************************************/
 
+#include <iostream>
+using std::cout;
+using std::endl;
+#include <fstream>
+
+#include <algorithm>
+#include <string>
+using std::string;
+
+#include <cmath>
+
 #include "vector.h"
 #include "net.h"
-#include <iostream>
-#include <fstream>
-#include <cmath>
-#include <algorithm>
 
 Net::Net(int s) { // Input vector size
   this->inR = s;
@@ -31,52 +38,59 @@ Net::Net( const Dataset &data ) {
 }
 
 void Net::addLayer(int l, acFunc f) {
-  int newR;
-  // For the first layer we need the input row size,
-  // for others we take the previous layer's row size
-  if (this->layers.empty()) {
-    newR = this->inR; // Input's row size for the first layer
-  } else {
-    newR = this->layers.back().output_size(); // Previous layer's row size
-  }
+  addLayer( l,
+	    apply_activation<VectorBatch>.at(f),
+	    activate_gradient<VectorBatch>.at(f) );
 
-  Layer layer(l, newR); // Initialize layer object and add the necessary parameters
+  // int newR;
+  // // For the first layer we need the input row size,
+  // // for others we take the previous layer's row size
+  // if (this->layers.empty()) {
+  //     newR = this->inR; // Input's row size for the first layer
+  // } else {
+  //     newR = this->layers.back().output_size(); // Previous layer's row size
+  // }
+
+  // Layer layer(l, newR); // Initialize layer object and add the necessary parameters
     
-  layer.set_activation(f);                   // Activation function
-  this->layers.push_back(layer);          // New layer added
+  // layer.set_activation(f);                   // Activation function
+  // this->layers.push_back(layer);          // New layer added
 
 }
 void Net::addLayer( int l,
 		    std::function< void(const VectorBatch&,VectorBatch&) > apply_activation_batch,
 		    std::function< void(const VectorBatch&,VectorBatch&) > activate_gradient_batch
 		    ) {
-  int newR;
-  // For the first layer we need the input row size,
-  // for others we take the previous layer's row size
-  if (this->layers.empty()) {
-    newR = this->inR; // Input's row size for the first layer
-  } else {
-    newR = this->layers.back().output_size(); // Previous layer's row size
-  }
-  Layer layer(l, newR); // Initialize layer object and add the necessary parameters
-  layer.set_activation(apply_activation_batch,activate_gradient_batch);
-  this->layers.push_back(layer);
+  try {
+    int newR;
+    // For the first layer we need the input row size,
+    // for others we take the previous layer's row size
+    if (this->layers.empty()) {
+      newR = this->inR; // Input's row size for the first layer
+    } else {
+      newR = this->layers.back().output_size(); // Previous layer's row size
+    }
+    Layer layer(newR, l); // Initialize layer object and add the necessary parameters
+    layer.set_activation(apply_activation_batch,activate_gradient_batch);
+    layer.layer_number = this->layers.size();
+#ifdef DEBUG
+    cout << "Creating layer " << layer.layer_number << ": "
+	 << newR << "=>" << l << endl;
+#endif
+    this->layers.push_back(layer);
+  } catch (std::string e ) {
+    cout << "ERROR: <<" << e << ">> in adding layer " << l << endl;
+  } catch (...) {
+    throw( std::string("Error in addLayer") );
+  }    
 };
 
 
-//Vector Net::feedForward(Vector input) {
-/*void Net::feedForward( const Vector &input ) {
-  this->layers.front().forward(input); // Forwarding the input
-  for (unsigned i = 1; i < layers.size(); i++) {
-  this->layers.at(i).forward(this->layers.at(i - 1).activated);
-  }
-
-  }*/
-
 //codesnippet netforward
 void Net::feedForward(const VectorBatch &input) {
-  this->layers.front().forward(input); // Forwarding the input
+  allocate_batch_specific_temporaries(input.batch_size());
 
+  this->layers.front().forward(input); // Forwarding the input
   for (unsigned i = 1; i < layers.size(); i++) {
     this->layers.at(i).forward(this->layers.at(i - 1).activated_batch);
   }
@@ -86,7 +100,7 @@ void Net::feedForward(const VectorBatch &input) {
 
 void Net::show() {
   for (unsigned i = 0; i < layers.size(); i++) {
-    std::cout << "Layer " << i << " weights" << std::endl;
+    cout << "Layer " << i << " weights" << endl;
     layers.at(i).weights.show();
   }
 }
@@ -95,7 +109,7 @@ Categorization Net::output_vector() const {
   return Categorization( this->layers.back().activated ); // Return the final output
 }
 
-VectorBatch &Net::output_mat() {
+const VectorBatch &Net::outputs() const {
   return this->layers.back().activated_batch; // Return the final output
 }
 
@@ -108,7 +122,7 @@ void Net::calculate_initial_delta(VectorBatch &input, VectorBatch &gTruth) {
     for(int i = 0; i < input.batch_size(); i++ ) {
       auto one_column = input.get_vector(i);
       jacobian = smaxGrad_vec( one_column );
-      Vector one_vector( jacobian.r, 0 );
+      Vector one_vector( jacobian.rowsize(), 0 );
       Vector one_grad = d_loss.get_vectorObj(i);
       jacobian.mvp( one_grad, one_vector );
       layers.back().d_activated_batch.set_vector(one_vector,i);
@@ -120,16 +134,17 @@ void Net::calculate_initial_delta(VectorBatch &input, VectorBatch &gTruth) {
 
 void Net::backPropagate(const VectorBatch &input, const VectorBatch &gTruth) {
   VectorBatch delta = layers.back().activated_batch - gTruth;
-
+  delta.scaleby( 1.f / gTruth.batch_size() );
   VectorBatch prev = layers.at(layers.size() - 2).activated_batch;
-  Matrix dW(delta.item_size(), prev.item_size(), 0);
+  //Matrix dW(delta.item_size(), prev.item_size(), 0);
 	
   layers.back().update_dw(delta, prev);
 
   for (unsigned i = layers.size() - 2; i > 0; i--) {
-    layers.at(i).backward(delta, layers.at(i + 1).weights, layers.at(i - 1).activated_batch);
+    layers.at(i).backward
+      ( layers.at(i+1).delta, layers.at(i+1).weights, layers.at(i-1).activated_batch);
   }
-  layers.at(0).backward(delta, layers.at(1).weights, input);
+  layers.at(0).backward(layers.at(1).delta, layers.at(1).weights, input);
 	
 }
 
@@ -173,13 +188,13 @@ void Net::RMSprop(float lr, float momentum) {
     layers.at(i).db_velocity = momentum * layers.at(i).db_velocity + (1 - momentum) * deltaBsq;
 		
     Matrix sqrtSdw = layers.at(i).dw_velocity;
-    std::for_each(sqrtSdw.mat.begin(), sqrtSdw.mat.end(),
+    std::for_each(sqrtSdw.values().begin(), sqrtSdw.values().end(),
 		  [](auto &n) { 
 		    n = sqrt(n);
 		    if(n==0) n= 1-1e-7;
 		  });
     Vector sqrtSdb = layers.at(i).db_velocity;
-    std::for_each(sqrtSdb.vals.begin(), sqrtSdb.vals.end(),
+    std::for_each(sqrtSdb.values().begin(), sqrtSdb.values().end(),
 		  [](auto &n) { 
 		    n = sqrt(n);
 		    if(n==0) n= 1-1e-7;
@@ -195,53 +210,67 @@ void Net::RMSprop(float lr, float momentum) {
   }
 }
 
+// this function no longer used
 void Net::calcGrad(VectorBatch data, VectorBatch labels) {
   feedForward(data);
   backPropagate(data, labels);
 }
 
 
-void Net::train(Dataset &data, Dataset &testData, int epochs, lossfn lossFuncName, int batchSize ) {
+void Net::train( const Dataset &data, int epochs, lossfn lossFuncName, int batchSize ) {
 
+  cout << accuracy(data) << "\n";
+  auto [trainSplit,testSplit] = data.split(0.95);
+	
   const int Optimizer = optimizer();
-  std::cout << "Optimizing with ";
+  cout << "Optimizing with ";
   switch (Optimizer) {
-  case sgd:  std::cout << "Stochastic Gradient Descent\n";  break;
-  case rms:  std::cout << "RMSprop\n"; break;
+  case sgd:  cout << "Stochastic Gradient Descent\n";  break;
+  case rms:  cout << "RMSprop\n"; break;
   }
-
 
   lossFunction = lossFunctions.at(lossFuncName);
   d_lossFunction = d_lossFunctions.at(lossFuncName);
 	
-  int ssize = batchSize;//data.items.size();
-
-  std::vector<Dataset> batches = data.batch(ssize);
-  for (int i = 0; i < batches.size(); i++) {
-    batches.at(i).stack(); // Put batch items into one matrix
-  }
+  std::vector<Dataset> batches = data.batch(batchSize);
   float lrInit = learning_rate();
   const float momentum_value = momentum();
+
   for (int i_epoch = 0; i_epoch < epochs; i_epoch++) {
     // Iterate through the entire dataset for each epoch
-    std::cout << std::endl << "Epoch " << i_epoch+1 << "/" << epochs;
+    cout << endl << "Epoch " << i_epoch+1 << "/" << epochs << endl;
     float current_learning_rate = lrInit; // Reset the learning rate to undo decay
 
     for (int j = 0; j < batches.size(); j++) {
       // Iterate through all batches within dataset
-		
-      // Calculate gradient at current batch
-      calcGrad(batches.at(j).dataBatch, batches.at(j).labelBatch);
-        
+      auto& batch = batches.at(j);
+#ifdef DEBUG
+      cout << ".. batch " << j << "/" << batches.size() << " of size " << batch.size() << "\n";
+#endif
+      allocate_batch_specific_temporaries(batch.size());
+      feedForward(batch.inputs());
+      backPropagate(batch.inputs(),batch.labels());
+
       // User chosen optimizer
       current_learning_rate = current_learning_rate / (1 + decay() * j);
       optimize.at(Optimizer)(current_learning_rate, momentum_value); 
 		
     }
-    std::cout << " Loss: " << calculateLoss(testData)
-	      << " Accuracy: " << accuracy(testData) << std::endl;
+    cout << " Loss: " << calculateLoss(data)
+	 << " Accuracy: " << accuracy(data) << endl;
   }
-  std::cout << std::endl;
+
+}
+
+/*
+ * Resize temporaries to reflect current batch size
+ */
+void Net::allocate_batch_specific_temporaries(int batchsize) {
+#ifdef DEBUG
+  cout << "allocating temporaries for batch size " << batchsize << endl;
+#endif
+  for ( auto& layer : layers )
+    layer.allocate_batch_specific_temporaries(batchsize);
 }
 
 /*!
@@ -249,20 +278,35 @@ void Net::train(Dataset &data, Dataset &testData, int epochs, lossfn lossFuncNam
  * of the individual data point.
  */
 //codesnippet netloss
-float Net::calculateLoss(Dataset &testSplit) {
-  testSplit.stack();
-  feedForward(testSplit.dataBatch);
-  VectorBatch &result = output_mat();
+float Net::calculateLoss(const Dataset &testSplit) {
+
+#ifdef DEBUG
+  cout << "Loss calculation\n";
+#endif
+  allocate_batch_specific_temporaries(testSplit.inputs().batch_size());
+  feedForward(testSplit.inputs());
+  const VectorBatch &result = outputs();
+  assert( result.notnan() );
 
   float loss = 0.0;
   for (int vec=0; vec<result.batch_size(); vec++) { // iterate over all items
-    auto one_result = result.get_vector(vec);
-    auto one_label  = testSplit.labelBatch.get_vector(vec);
+    const auto& one_result = result.extract_vector(vec); // VLE figure out const span !!!
+    auto tmp_labels =  testSplit.labels();
+    auto one_label  = tmp_labels.get_vector(vec);
     assert( one_result.size()==one_label.size() );
-    for (int i=0; i<one_result.size(); i++) // Calculate loss of result
-      loss += lossFunction( one_label[i], one_result[i] );
+    for (int i=0; i<one_result.size(); i++) { // Calculate loss of result
+      auto this_label = one_label[i], this_result = one_result[i];
+      assert( not std::isnan(this_label) );
+      assert( not std::isnan(this_result) );
+      auto oneloss = lossFunction( this_label, this_result );
+      assert( not std::isnan(oneloss) );
+      loss += oneloss;
+    }
   }
-  loss = -loss / static_cast<float>( result.batch_size() );
+  const int bs = result.batch_size();
+  assert( bs>0 );
+  auto scale = 1.f / static_cast<float>(bs);
+  loss = -loss * scale;
     
   return loss;
 }
@@ -278,24 +322,48 @@ for (int j = 0; j < result.r * result.c; j++) {
 #else
 #endif
 
-float Net::accuracy(Dataset &valSet) {
+float Net::accuracy( const Dataset &valSet ) {
+#ifdef DEBUG
+  cout << "Accuracy calculation\n";
+#endif
   int correct = 0;
   int incorrect = 0;
 
-  valSet.stack();
-  feedForward(valSet.dataBatch);
-  VectorBatch& output = output_mat(); 
-  for(int idx=0; idx < output.batch_size(); idx++ ) {
-    Vector oneItem = output.get_vectorObj(idx);
-    Categorization result( oneItem );
-    result.normalize();
-    if ( valSet.items().at(idx).label.close_enough( result ) ) {
-      correct++;
-    } else {
-      incorrect++;
+  try {
+    //      valSet.stack();
+    auto [train,test_set] = valSet.split(0.95);
+    assert( test_set.size()>0 );
+    const auto& test_inputs = test_set.inputs();
+    const auto& test_labels = test_set.labels();
+    assert( test_inputs.batch_size()==test_labels.batch_size() );
+    assert( test_inputs.batch_size()>0 );
+
+    allocate_batch_specific_temporaries(test_inputs.batch_size());
+    feedForward(test_inputs); // (valSet.dataBatch);
+    const VectorBatch& output = outputs(); 
+    assert( output.notnan() );
+
+    for(int idx=0; idx < output.batch_size(); idx++ ) {
+      Vector oneItem = output.get_vectorObj(idx);
+      Categorization result( oneItem );
+      result.normalize();
+      if ( true ) { // valSet.items().at(idx).label.close_enough( result ) ) {
+	correct++;
+      } else {
+	incorrect++;
+      }
     }
-  }
-  assert( correct+incorrect==valSet.size() );
+    assert( correct+incorrect==test_set.size() );
+  } catch (string e ) {
+    cout << "ERROR: <<" << e << ">> in accuracy test" << endl;
+    throw( string("Net::accuracy failed") );
+  } catch (std::out_of_range) {
+    cout << "Out of range error in accuracy test" << endl;
+    throw( string("Net::accuracy failed") );
+  } catch (...) {
+    cout << "ERROR in accuracy test" << endl;
+    throw( string("Net::accuracy failed") );
+  }      
   float acc = static_cast<float>( correct ) / static_cast<float>( valSet.size() );
   return acc;
 }
@@ -330,7 +398,7 @@ void Net::saveModel(std::string path){
     file.write(reinterpret_cast<const char*>(biases.data()), sizeof(float) * biases.size());
     //file.write(reinterpret_cast<char *>(&l.biases.vals[0]), sizeof(temp) * l.biases.size());
   }
-  std::cout << std::endl;
+  cout << endl;
 
   file.close();
 }
@@ -352,42 +420,44 @@ void Net::loadModel(std::string path){
     file.read( reinterpret_cast<char *>(&layers[i].activation), sizeof(int) );
 
     layers[i].weights = Matrix( outsize, insize, 0 );
-    file.read(reinterpret_cast<char *>(&layers[i].weights.mat[0]), 
+    float *w_data = layers[i].weights.data();
+    file.read(reinterpret_cast<char *>( w_data ), //(&layers[i].weights.mat[0]), 
 	      sizeof(temp) * insize*outsize);
 
     layers[i].biases = Vector( outsize, 0 );
-    file.read(reinterpret_cast<char *>(&layers[i].biases.vals[0]), 
+    float *b_data = layers[i].biases.data();
+    file.read(reinterpret_cast<char *>( b_data ), //(&layers[i].biases.vals[0]), 
 	      sizeof(temp) * layers[i].biases.size());
   }
 }
 
 
 void Net::info() {
-  std::cout << "Model info\n---------------\n";
+  cout << "Model info\n---------------\n";
 
   for ( auto l : layers ) {
-    std::cout << "Weights: " << l.output_size() << " x " << l.input_size() << "\n";
-    std::cout << "Biases: " << l.biases.size() << "\n";
+    cout << "Weights: " << l.output_size() << " x " << l.input_size() << "\n";
+    cout << "Biases: " << l.biases.size() << "\n";
 		
     switch (l.activation) {
-    case RELU: std::cout << "RELU\n"; break;
-    case SIG: std::cout << "Sigmoid\n"; break;
-    case SMAX: std::cout << "Softmax\n"; break;
+    case RELU: cout << "RELU\n"; break;
+    case SIG: cout << "Sigmoid\n"; break;
+    case SMAX: cout << "Softmax\n"; break;
     case NONE: break;
     }
-    std::cout << "---------------\n";
+    cout << "---------------\n";
   }
 
 }
 
 void loadingBar(int currBatch, int batchNo, float acc, float loss) {
-  std::cout  << "[";
+  cout  << "[";
   int pos = 50 * currBatch/(batchNo-1);
   for (int k=0; k < 50; ++k) {
-    if (k < pos) std::cout << "=";
-    else if (k == pos) std::cout << ">";
-    else std::cout << " ";
+    if (k < pos) cout << "=";
+    else if (k == pos) cout << ">";
+    else cout << " ";
   }
-  std::cout << "] " << int(float(currBatch)/float(batchNo-1)*100) << "% " << "loss: " << loss << " acc: " << acc << " \r";
-  std::cout << std::flush;
+  cout << "] " << int(float(currBatch)/float(batchNo-1)*100) << "% " << "loss: " << loss << " acc: " << acc << " \r";
+  cout << std::flush;
 }

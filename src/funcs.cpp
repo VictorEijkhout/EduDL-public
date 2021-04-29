@@ -13,6 +13,9 @@
 
 #include "funcs.h"
 
+#include <iostream>
+using std::cout;
+using std:: endl;
 #include <vector>
 using std::vector;
 
@@ -22,13 +25,18 @@ using std::vector;
 // VectorBatch input output variants
 
 //template <typename VectorBatch>
-void relu_io(const VectorBatch &m, VectorBatch &a) {
-  a.vals_vector().assign(m.vals_vector().begin(),m.vals_vector().end());
-  float alpha = 0.01; // used for leaky relu, for regular relu, simply set alpha to 0.0
+void relu_io(const VectorBatch &mm, VectorBatch &a) {
+  VectorBatch m(mm);
+  assert( a.item_size()==m.item_size() );
+  assert( a.batch_size()==m.batch_size() );
+  auto& avals = a.vals_vector();
+  avals.assign(m.vals_vector().begin(),m.vals_vector().end());
+  const float alpha = 0.01; // used for leaky relu, for regular relu, set alpha to 0.0
   for (int i = 0; i < m.batch_size() * m.item_size(); i++) {
     // values will be 0 if negative, and equal to themselves if positive
-    if (a.vals_vector()[i] < 0)
-      a.vals_vector()[i] *= alpha;
+    if (avals.at(i) < 0)
+      avals.at(i) *= alpha;
+    //cout << i << ":" << avals.at(i) << endl;
   }
 }
 
@@ -125,7 +133,9 @@ Matrix smaxGrad_vec( const gsl::span<float> &v)
   Matrix im(v.size(),1,0); // Input but converted to a matrix
 
   for (int i=0; i<v.size(); i++){
-    im.mat[i] = v[i];
+    float *i_data = im.data();
+    *( i_data +i ) // im.mat[i]
+      = v[i];
   }
 
   Matrix dM = im;
@@ -134,7 +144,9 @@ Matrix smaxGrad_vec( const gsl::span<float> &v)
 
   for (int i=0,j=0; i<diag.rowsize()*diag.colsize(); i+=diag.rowsize()+1,j++) {
     // identity * dM
-    diag.mat[i] = dM.mat[j];
+    float *d_data = diag.data(), *m_data = dM.data();
+    *( d_data+i ) // diag.mat[i]
+      = *( m_data+j ); //dM.mat[j];
   }
 
   // S_(i,j) dot S_(i,k)

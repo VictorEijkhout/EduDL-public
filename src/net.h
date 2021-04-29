@@ -22,7 +22,6 @@
 #include <cmath>
 
 enum opt{sgd, rms}; // Gradient descent, RMSprop
-enum lossfn{cce, mse}; // categorical cross entropy, mean squared error
 
 class Net {
 private:
@@ -40,14 +39,16 @@ public:
 		 std::function< void(const VectorBatch&,VectorBatch&) > apply_activation_batch,
 		 std::function< void(const VectorBatch&,VectorBatch&) > activate_gradient_batch
 		 );
-
   void show(); // Show all weights
+  const Layer& at(int i) const { return layers.at(i); };
+  Layer& at(int i) { return layers.at(i); };
   Categorization output_vector() const;
-  VectorBatch &output_mat();
+  const VectorBatch &outputs() const;
 
   void feedForward( const Vector& );
   void feedForward( const VectorBatch& );
 
+  void allocate_batch_specific_temporaries(int batchsize);
   void calcGrad(Dataset data);
   void calcGrad(VectorBatch data, VectorBatch labels);
 
@@ -87,22 +88,13 @@ public:
     [this] ( float lr, float momentum ) { RMSprop(lr, momentum); }
   };
 	
-  void train(Dataset &trainData, Dataset &testData, int epochs, lossfn lossFunc, int batchSize);
+  void train( const Dataset& data, int epochs, lossfn lossFunc, int batchSize);
 #if MPINN
   void trainmpi(Dataset &trainData, Dataset &testData, float lr, int epochs, opt Optimizer, lossfn lossFunc, int batchSize, float momentum = 0.0, float decay = 0.0);
 #endif
-  float calculateLoss(Dataset &testSplit);
-  float accuracy(Dataset& valSet);
+  float calculateLoss(const Dataset &testSplit);
+  float accuracy( const Dataset& valSet );
 
-  inline static std::vector< std::function< float( const float& groundTruth, const float& result) > > lossFunctions{
-    [] ( const float &gT, const float &result ) { return gT * log(result); }, // Categorical Cross Entropy
-    [] ( const float &gT, const float &result ) { return pow(gT - result, 2); }, // Mean Squared Error
-  };
-
-  inline static std::vector< std::function< VectorBatch( VectorBatch& groundTruth, VectorBatch& result) > > d_lossFunctions{
-    [] ( VectorBatch &gT, VectorBatch &result ) { return -gT/result/result.batch_size(); },
-    [] ( VectorBatch &gT, VectorBatch &result ) { return -2 * ( gT-result)/result.batch_size(); },
-  };
 
   void saveModel(std::string path);
   void loadModel(std::string path);

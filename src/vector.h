@@ -18,9 +18,14 @@
 #include <cassert>
 #include <cmath>
 
+class VectorBatch; // forward for friending
+class Matrix; // forward for friending
 class Vector {
-public:
+  friend class VectorBatch;
+  friend class Matrix;
+private:
   std::vector<float> vals;
+public:
   Vector();
   Vector( std::vector<float> vals );
   Vector(int size, int init);
@@ -28,8 +33,9 @@ public:
   int r;
   int c=1;
   void show();
-  void add(Vector &v1);
+  void add( const Vector &v1);
   void set_ax( float a, Vector &x );
+  std::vector<float>& values() { return vals; };
   const std::vector<float>& values() const { return vals; };
   float *data() { return vals.data(); };
   const float *data() const { return vals.data(); };

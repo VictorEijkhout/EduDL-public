@@ -24,6 +24,7 @@ LIBOBJS = $(patsubst %.cpp,%.o,${LIBSRCS})
 	@echo "compiling $<"
 	@${CXX} -c $< \
 	    -I${CXXOPTS}/include \
+	    ` if [ "${DEBUG}" = "1" ] ; then echo "-DDEBUG" ; fi `\
 	    ` if [ "${USE_BLIS}" = "1" ] ; then echo "-DBLISNN -I${BLIS_INC_DIR}" ; fi ` \
 	    ` if [ "${USE_GSL}" = "1" ] ; then echo "-DUSE_GSL -I${GSL_INC_DIR}" ; fi `
 
@@ -42,6 +43,17 @@ BLAS_FILES = $(wildcard *_impl_*.cpp)
 BLAS_OBJS = $(patsubst %.cpp,%.o,${BLAS_FILES})
 ${BLAS_OBJS} : Make.inc
 
+TESTS = mnist posneg linear
+TEST = mnist
+info ::
+	@echo "make test TEST=.... (out of: ${TESTS}, default=${TEST})"
+.PHONY: test
+test :  ${LIBOBJS}
+	@program=test_${TEST} \
+	 && make --no-print-directory $$program.o DEBUG=${DEBUG} \
+	 && echo && echo "Linking test program <<$$program>>" \
+	 && ${CXX} -o $$program $$program.o ${LIBOBJS} \
+	    ` if [ "${USE_BLIS}" = "1" ] ; then echo "-L${BLIS_LIB_DIR} -lblis -lm" ; fi `
 PROGRAMS = testdl posneg mpidl
 info ::
 	@echo "make PROGRAM (where PROGRAM in ${PROGRAMS}) : make application"
@@ -65,3 +77,4 @@ info ::
 	@echo "make clean : remove junk and executables"
 clean ::
 	@rm -f *~ *.o *.o.tmp a.out ${PROGRAMS}
+	@for t in ${TESTS} ; do rm -f test_$$t ; done

@@ -63,4 +63,24 @@ static inline std::vector< std::function< void(const V&, V&) > > activate_gradie
   [] (  const V &m, V &v ) { linGrad_io(m,v); }
 };
 
+enum lossfn{cce, mse}; // categorical cross entropy, mean squared error
+inline static std::vector< std::function< float( const float& groundTruth, const float& result) > > lossFunctions{
+  [] ( const float &gT, const float &result ) {
+    assert(result>0.f);
+    return gT * log(result); }, // Categorical Cross Entropy
+  [] ( const float &gT, const float &result ) {
+    return pow(gT - result, 2); }, // Mean Squared Error
+};
+
+inline static std::vector< std::function< VectorBatch( VectorBatch&, VectorBatch&) > > d_lossFunctions  {
+  [] ( VectorBatch &gT, VectorBatch &result ) -> VectorBatch {
+    std::cout << "Ambiguous operator\n" ; throw(27);
+    //return -gT / ( result/ static_cast<float>( result.batch_size() ) );
+  },
+  [] ( VectorBatch &gT, VectorBatch &result ) -> VectorBatch {
+    std::cout << "Ambiguous operator\n" ; throw(27);
+    //return -2 * ( gT-result)/ static_cast<float>( result.batch_size() );
+  },
+};
+
 #endif //SRC_FUNCS_H
