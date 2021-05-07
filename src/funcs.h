@@ -13,6 +13,9 @@
 
 #ifndef SRC_FUNCS_H
 #define SRC_FUNCS_H
+
+#include <functional>
+
 #include "matrix.h"
 #include "vector.h"
 #include "vector2.h"
@@ -50,17 +53,17 @@ Matrix smaxGrad_vec( const std::vector<float> &v);
 template <typename V>
 static inline std::vector< std::function< void(const V&, V&) > > apply_activation{
   [] ( const V &v, V &a ) { relu_io(v,a); },
-  [] ( const V &v, V &a ) { sigmoid_io(v,a); },
-  [] ( const V &v, V &a ) { softmax_io(v,a); },
-  [] ( const V &v, V &a ) { linear_io(v,a); }
+    [] ( const V &v, V &a ) { sigmoid_io(v,a); },
+    [] ( const V &v, V &a ) { softmax_io(v,a); },
+    [] ( const V &v, V &a ) { linear_io(v,a); }
 };
   	
 template <typename V>
 static inline std::vector< std::function< void(const V&, V&) > > activate_gradient{
   [] (  const V &m, V &v ) { reluGrad_io(m,v); },
-  [] (  const V &m, V &v ) { sigGrad_io(m,v); },
-  [] (  const V &m, V &v ) { smaxGrad_io(m,v); },
-  [] (  const V &m, V &v ) { linGrad_io(m,v); }
+    [] (  const V &m, V &v ) { sigGrad_io(m,v); },
+    [] (  const V &m, V &v ) { smaxGrad_io(m,v); },
+    [] (  const V &m, V &v ) { linGrad_io(m,v); }
 };
 
 enum lossfn{cce, mse}; // categorical cross entropy, mean squared error

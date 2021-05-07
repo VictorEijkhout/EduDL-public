@@ -18,7 +18,7 @@
 #include <cassert>
 
 Vector::Vector(int s, int init) {
-  r = s;
+	r = s;
   vals = std::vector<float>(s);
   if (init==0){
     std::fill(vals.begin(),vals.end(), 0);
@@ -39,24 +39,24 @@ void Vector::add( const Vector &v1 ) {
 
 void Vector::set_ax( float a, Vector &x) {
   assert(x.size()==this->size());
-  for (int i=0; i<size(); i++){
-    vals[i] = a * x.vals[i];
-  }
+    for (int i=0; i<size(); i++){
+        vals[i] = a * x.vals[i];
+    }
 
 }
 
 
 void Vector::zeros() {
-  std::fill(vals.begin(),vals.end(),0);
+    std::fill(vals.begin(),vals.end(),0);
 
 }
 
 void Vector::show() {
-  int i;
-  for (i=0;i<size();i++) {
-    std::cout << vals[i] << '\n';
-  }
-  std::cout << '\n';
+	int i;
+    for (i=0;i<size();i++) {
+        std::cout << vals[i] << '\n';
+    }
+    std::cout << '\n';
 
 }
 

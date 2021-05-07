@@ -21,9 +21,9 @@
 
 class dataItem{
 public: // should really be done through friends private:
-  Vector data; // Data matrix
+    Vector data; // Data matrix
   //Vector label; // Label
-  Categorization label; // Label
+    Categorization label; // Label
 public:
   dataItem( Vector data,/* Vector */ Categorization label)
     : data(data),label(label) {};
@@ -42,13 +42,16 @@ private:
   int nclasses{0};
   //  std::vector<dataItem> _items; // All the data: {data, label}
 private:
-  VectorBatch dataBatch;
-  VectorBatch labelBatch;
+    VectorBatch dataBatch;
+    VectorBatch labelBatch;
+  int lowerbound{0},number{0};
 public:
   Dataset() {};
-  Dataset( int n ) : nclasses(n) {};
+  Dataset( int n );
   Dataset( std::vector<dataItem> );
 
+  void set_lowerbound( int b );
+  void set_number( int b );
   void push_back(dataItem it);
   int size() const;
   int data_size() const;
@@ -67,16 +70,16 @@ public:
   //  const std::vector<dataItem>& items() const { return _items; };
   //const Vector& label(int i) const { return items.at(i).label; };
 
-  std::string path; // Path of the dataset
+    std::string path; // Path of the dataset
 public:
   const auto& inputs() const { return dataBatch; };
   const auto& labels() const { return labelBatch; };
 
-  int readTest(std::string dataPath); // Read modified MNIST Dataset
-  void shuffle(); // Mix the dataset
-  std::vector<Dataset> batch(int n) const; // Divides the dataset into n batches
-  void stack();
-  std::pair<Dataset,Dataset> split(float trainFraction) const; // Train-test split
+    int readTest(std::string dataPath); // Read modified MNIST Dataset
+    void shuffle(); // Mix the dataset
+    std::vector<Dataset> batch(int n) const; // Divides the dataset into n batches
+    void stack();
+    std::pair<Dataset,Dataset> split(float trainFraction) const; // Train-test split
 };
 
 

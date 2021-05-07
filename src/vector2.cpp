@@ -13,6 +13,12 @@
 
 #include "vector2.h"
 #include <iostream>
+using std::cout;
+using std::endl;
+#include <iomanip>
+using std::setprecision;
+#include <string>
+using std::string;
 #include <vector>
 #include <algorithm>
 #include <cassert>
@@ -37,6 +43,17 @@ void VectorBatch::allocate(int batchsize,int itemsize) {
   vals.resize(batchsize*itemsize);
   set_batch_size(batchsize);
   set_item_size(itemsize);
+};
+
+void VectorBatch::display( string header) const {
+  cout << header << "\n";
+  for (int j=0; j<batch_size(); j++) {
+    for (int i=0; i<item_size(); i++)
+      cout << setprecision(5)
+	   << vals_vector().at( INDEXc(i,j,item_size(),batch_size()) )
+	   << " ";
+    cout << "\n";
+  }
 };
 
 void VectorBatch::set_col(int j,const std::vector<float> &v ) {
@@ -173,10 +190,10 @@ VectorBatch VectorBatch::operator-(const VectorBatch &m2) {
   assert( batch_size()==m2.batch_size() );
   const int c = m2.item_size(), r = m2.batch_size();
   VectorBatch out(r, c, 0);
-  for (int i = 0; i < r * c; i++) {
-    out.vals[i] = this->vals[i] - m2.vals[i];
-  }
-  return out;
+    for (int i = 0; i < r * c; i++) {
+        out.vals[i] = this->vals[i] - m2.vals[i];
+    }
+    return out;
 }
 
 VectorBatch VectorBatch::operator*(const VectorBatch &m2) { // Hadamard product
@@ -185,9 +202,9 @@ VectorBatch VectorBatch::operator*(const VectorBatch &m2) { // Hadamard product
   const int c = m2.item_size(), r = m2.batch_size();
   VectorBatch out(r, c, 0);
   for (int i = 0; i < nelements(); i++) {
-    out.vals[i] = this->vals[i] * m2.vals[i];
-  }
-  return out;
+        out.vals[i] = this->vals[i] * m2.vals[i];
+    }
+    return out;
 }
 
 void VectorBatch::hadamard(const VectorBatch& m1,const VectorBatch& m2) {
@@ -198,7 +215,7 @@ void VectorBatch::hadamard(const VectorBatch& m1,const VectorBatch& m2) {
   const auto& m1vals = m1.vals_vector();
   const auto& m2vals = m2.vals_vector();
   for (int i=0; i<r*c; i++) {
-    vals[i] = m1vals[i] * m2vals[i];
+        vals[i] = m1vals[i] * m2vals[i];
   }
 }
 
@@ -220,26 +237,26 @@ void VectorBatch::scaleby( float f) {
 }
 
 VectorBatch VectorBatch::operator-() {
-  VectorBatch result = *this;
-  for (int i = 0; i < nelements(); i++) {
-    result.vals[i] = -vals[i];
-  }
+    VectorBatch result = *this;
+    for (int i = 0; i < nelements(); i++) {
+        result.vals[i] = -vals[i];
+    }
 
-  return result;
+    return result;
 };
 
 VectorBatch operator/(const VectorBatch &m, const float &c) {
-  VectorBatch o = m;
-  for (int i = 0; i < m.nelements(); i++) {
-    o.vals[i] = o.vals[i] / c;
-  }
-  return o;
+    VectorBatch o = m;
+    for (int i = 0; i < m.nelements(); i++) {
+        o.vals[i] = o.vals[i] / c;
+    }
+    return o;
 }
 
 VectorBatch operator*(const float &c, const VectorBatch &m) {
-  VectorBatch o = m;
-  for (int i = 0; i < m.nelements(); i++) {
-    o.vals[i] = o.vals[i] * c;
-  }
-  return o;
+    VectorBatch o = m;
+    for (int i = 0; i < m.nelements(); i++) {
+        o.vals[i] = o.vals[i] * c;
+    }
+    return o;
 }

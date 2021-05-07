@@ -53,52 +53,50 @@ class VectorBatch{
 private: //private:
   std::vector<float> vals;
   int nvectors{0},vector_size{0};
-  // int r=0;
-  // int c=0;
 public:
-  VectorBatch();
-  VectorBatch( int itemsize );
-  // this one is in the blis/reference file
-  VectorBatch(int nRows, int nCols, bool rand=false);
-  void allocate(int,int);
+    VectorBatch();
+    VectorBatch( int itemsize );
+    // this one is in the blis/reference file
+    VectorBatch(int nRows, int nCols, bool rand=false);
+    void allocate(int,int);
 
-  int size() const { return vals.size(); };
-  void resize(int m,int n) {
-    nvectors = m; set_item_size(n); //r = m; c = n;
-    vals.resize(m*n); };
-  bool notnan() const {
-    return all_of
-      ( vals.begin(),vals.end(),
-	[] (float e) { return not isnan(e); }
+    int size() const { return vals.size(); };
+    void resize(int m,int n) {
+      nvectors = m; set_item_size(n); //r = m; c = n;
+      vals.resize(m*n); };
+    bool notnan() const {
+      return all_of
+	( vals.begin(),vals.end(),
+	  [] (float e) { return not isnan(e); }
 	);
-  }
-  bool notinf() const {
-    return all_of
-      ( vals.begin(),vals.end(),
-	[] (float e) { return not isinf(e); }
+    }
+    bool notinf() const {
+      return all_of
+	( vals.begin(),vals.end(),
+	  [] (float e) { return not isinf(e); }
 	);
-  }
-  int item_size() const { return vector_size; };
-  void set_item_size(int n) { vector_size = n; };
-  int batch_size() const { return nvectors; };
-  void set_batch_size(int n) { nvectors = n; };
-  int nelements() const {
-    int n = vals.size();
-    assert( n==item_size()*batch_size() );
-    return n;
-  };
-  VectorBatch transpose() const;
-  std::vector<float>& vals_vector() { return vals; };
-  const std::vector<float>& vals_vector() const { return vals; };
-  float *data() { return vals.data(); };
-  const float *data() const { return vals.data(); };
-  const float *data( int disp ) const { return vals.data()+disp; };
+    }
+    int item_size() const { return vector_size; };
+    void set_item_size(int n) { vector_size = n; };
+    int batch_size() const { return nvectors; };
+    void set_batch_size(int n) { nvectors = n; };
+    int nelements() const {
+      int n = vals.size();
+      assert( n==item_size()*batch_size() );
+      return n;
+    };
+  //    VectorBatch transpose() const;
+    std::vector<float>& vals_vector() { return vals; };
+    const std::vector<float>& vals_vector() const { return vals; };
+    float *data() { return vals.data(); };
+    const float *data() const { return vals.data(); };
+    const float *data( int disp ) const { return vals.data()+disp; };
 
 	
-  void v2mp( const Matrix &x, VectorBatch &y) const;
-  void v2tmp( const Matrix &x, VectorBatch &y ) const;
-  void v2mtp( const Matrix &x, VectorBatch &y ) const;
-  void outer2( const VectorBatch &x, Matrix &y ) const;
+	void v2mp( const Matrix &x, VectorBatch &y) const;
+    void v2tmp( const Matrix &x, VectorBatch &y ) const;
+	void v2mtp( const Matrix &x, VectorBatch &y ) const;
+	void outer2( const VectorBatch &x, Matrix &y ) const;
 	
   void add_vector( const std::vector<float> &v );
   void set_col(int j,const std::vector<float> &v );
@@ -123,6 +121,7 @@ public:
 
 
   void show() const;
+  void display(std::string) const;
 
   void addh(const Vector &y);
   void addh(const VectorBatch &y);

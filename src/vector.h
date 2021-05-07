@@ -24,32 +24,32 @@ class Vector {
   friend class VectorBatch;
   friend class Matrix;
 private:
-  std::vector<float> vals;
+    std::vector<float> vals;
 public:
-  Vector();
-  Vector( std::vector<float> vals );
-  Vector(int size, int init);
-  int size() const;
-  int r;
-  int c=1;
-  void show();
-  void add( const Vector &v1);
-  void set_ax( float a, Vector &x );
-  std::vector<float>& values() { return vals; };
-  const std::vector<float>& values() const { return vals; };
-  float *data() { return vals.data(); };
-  const float *data() const { return vals.data(); };
-  void zeros();
-  void square();
-  Vector operator-(); // Unary negate operator
-  Vector& operator=(const Vector& m2); // Copy constructor
-  Vector operator+(const Vector &m2); // Element-wise addition
-  Vector operator*(const Vector &m2); // Hadamard Product Element-wise multiplication
-  Vector operator/(const Vector &m2); // Element-wise division
-  Vector operator-(const Vector &m2); // Element-wise subtraction
-  friend Vector operator-(const float &c, const Vector &m); // for constant
-  friend Vector operator*(const float &c, const Vector &m); // for constant-matrix multiplication
-  friend Vector operator/(const Vector &m, const float &c); // for matrix-constant division
+    Vector();
+    Vector( std::vector<float> vals );
+	Vector(int size, int init);
+    int size() const;
+	int r;
+	int c=1;
+	void show();
+    void add( const Vector &v1);
+	void set_ax( float a, Vector &x );
+    std::vector<float>& values() { return vals; };
+    const std::vector<float>& values() const { return vals; };
+    float *data() { return vals.data(); };
+    const float *data() const { return vals.data(); };
+    void zeros();
+    void square();
+    Vector operator-(); // Unary negate operator
+    Vector& operator=(const Vector& m2); // Copy constructor
+    Vector operator+(const Vector &m2); // Element-wise addition
+    Vector operator*(const Vector &m2); // Hadamard Product Element-wise multiplication
+    Vector operator/(const Vector &m2); // Element-wise division
+    Vector operator-(const Vector &m2); // Element-wise subtraction
+    friend Vector operator-(const float &c, const Vector &m); // for constant
+    friend Vector operator*(const float &c, const Vector &m); // for constant-matrix multiplication
+    friend Vector operator/(const Vector &m, const float &c); // for matrix-constant division
 
 };
 

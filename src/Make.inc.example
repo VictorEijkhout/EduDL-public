@@ -1,0 +1,42 @@
+################################################################
+####
+#### Example Make include file for building EduDL network
+#### installation-specific settings
+####
+################################################################
+
+##
+## compiler settings
+##
+
+CXX = clang++ -g -std=c++17 -fopenmp
+
+##
+## cxxopts: required for the example networks
+## https://github.com/jarro2783/cxxopts
+##
+
+CXXOPTS = ${HOME}/Installation/cxxopts/installation
+
+##
+## optional BLIS library for high performance linear algebra
+## https://github.com/flame/blis
+##
+
+USE_BLIS=1
+BLIS_INC_DIR=/Users/eijkhout/Installation/blis/installation-git-mt/include
+BLIS_LIB_DIR=/Users/eijkhout/Installation/blis/installation-git-mt/lib
+
+##
+## optional GSL library for the C++20 `span' feature
+## https://github.com/martinmoene/gsl-lite.git
+##
+
+USE_GSL=1
+GSL_INC_DIR=../gsl-lite/include
+
+##
+## set DEBUG=1
+## for getting trace output
+##
+DEBUG = 0

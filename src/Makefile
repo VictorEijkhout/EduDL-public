@@ -2,6 +2,8 @@
 ####
 #### Makefile for building EduDL network
 ####
+#### 2021
+####
 ################################################################
 
 info ::
@@ -12,7 +14,7 @@ include Make.inc
 #
 # for now just a single build line
 #
-LIBSRCS := vector2.cpp matrix.cpp net.cpp dataset.cpp layer.cpp funcs.cpp vector.cpp 
+LIBSRCS := vector2.cpp matrix.cpp net.cpp dataset.cpp layer.cpp funcs.cpp vector.cpp trace.cpp
 ifeq "${USE_BLIS}" "1"
  LIBSRCS += matrix_impl_blis.cpp vector_impl_blis.cpp vectorbatch_impl_blis.cpp
 else
@@ -35,6 +37,8 @@ funcs.o : funcs.h matrix.h
 layer.o : layer.h funcs.h
 net.o : net.h dataset.h layer.h
 test.o : matrix.h net.h dataset.h layer.h funcs.h
+net.o layer.o vectorbatch_impl_reference.o vectorbatch_impl_blis.o trace.o : trace.h
+
 #
 # implementation specific files have to be recompiled
 # if we tinker with settings
@@ -53,7 +57,28 @@ test :  ${LIBOBJS}
 	 && make --no-print-directory $$program.o DEBUG=${DEBUG} \
 	 && echo && echo "Linking test program <<$$program>>" \
 	 && ${CXX} -o $$program $$program.o ${LIBOBJS} \
-	    ` if [ "${USE_BLIS}" = "1" ] ; then echo "-L${BLIS_LIB_DIR} -lblis -lm" ; fi `
+	    ` if [ "${USE_BLIS}" = "1" ] ; then echo "-L${BLIS_LIB_DIR} -lblis -lm" ; fi ` \
+	 && echo ".. done"
+
+info ::
+	@echo "make run TEST=... RUN_OPTIONS=..."
+.PHONY: run
+run :
+	@echo "Running: test_${TEST} ${RUN_OPTIONS}" \
+	 && if [ ! -z "${TACC_TAU_DIR}" ] ; then \
+	        tau_out=tau_out.${TEST} \
+	         && echo ".. tau output in: $${tau_out}" \
+	         && export TAU_TRACE=1 \
+	         && export TAU_PROFILE=1 \
+	         && export TRACEDIR=$${tau_out} \
+	         && export PROFILEDIR=$${tau_out} \
+	         && rm -rf $${tau_out} && mkdir -p $${tau_out} \
+	      ; fi \
+	 && ./test_${TEST} ${RUN_OPTIONS}
+
+##
+## old rules. must go
+##
 PROGRAMS = testdl posneg mpidl
 info ::
 	@echo "make PROGRAM (where PROGRAM in ${PROGRAMS}) : make application"

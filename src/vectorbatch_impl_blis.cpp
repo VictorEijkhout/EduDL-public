@@ -40,98 +40,149 @@ VectorBatch::VectorBatch(int nRows, int nCols, bool random) {
   }
 }
 		
-VectorBatch VectorBatch::transpose() const {
-  const int c = batch_size(), r = item_size();
-  VectorBatch result(c, r, 0); // Initialize a new matrix with inverted dimension values
+// VectorBatch VectorBatch::transpose() const {
+//     const int c = batch_size(), r = item_size();
+//     VectorBatch result(c, r, 0); // Initialize a new matrix with inverted dimension values
 
-  bli_scopym( 0, BLIS_NONUNIT_DIAG, BLIS_DENSE, BLIS_TRANSPOSE,
-	      c, r, const_cast<float*>(&vals[0]), c, 1, &result.vals[0], r, 1);  
-  return result;
-}
+// 	bli_scopym( 0, BLIS_NONUNIT_DIAG, BLIS_DENSE, BLIS_TRANSPOSE,
+// 		    c, r, const_cast<float*>(&vals[0]), c, 1, &result.vals[0], r, 1);  
+//     return result;
+// }
 
 void VectorBatch::show() const {
 
-  const int c = batch_size(), r = item_size();
-  char e[5] = "";
-  char forvals[8] = "%4.4f";
-  bli_sprintm( e, r, c, const_cast<float*>(&vals[0]), c, 1, forvals, e );
+    const int c = batch_size(), r = item_size();
+	char e[5] = "";
+	char forvals[8] = "%4.4f";
+	bli_sprintm( e, r, c, const_cast<float*>(&vals[0]), c, 1, forvals, e );
 }
 
 
-void VectorBatch::v2mp(const Matrix &x, VectorBatch &y) const { // In place matrix matrix multiplication
-  // (m,n) * (n,k) -> (m,k)
-  const int c = batch_size(), r = item_size();
-  cout << "multiply matrix " << x.rowsize() << "x" << x.colsize()
-       << " to vector " << item_size() << "x" << batch_size()
-       << " into vector " << y.item_size() << "x" << y.batch_size()
-       << endl;
-  assert( x.colsize()==item_size() );
-  assert( x.rowsize()==y.item_size() );
-  assert( batch_size()==y.batch_size() );
+/*
+ * For explanation of the BLIS routines, see
+ * https://github.com/flame/blis/blob/master/docs/BLISTypedAPI.md#gemm
+ * and
+ * https://github.com/flame/blis/blob/master/docs/BLISTypedAPI.md#computational-function-reference
+ */
+void VectorBatch::v2mp(const Matrix &m, VectorBatch &y) const {
+  const int
+    xr = item_size(),   xc = batch_size(),   // column storage
+    mr = m.rowsize(),   mc = m.colsize(),    // row storage
+    yr = y.item_size(), yc = y.batch_size(); // column
+
+  if (trace_scalars())
+    cout << "matrix vector product "
+	 << mr << "x" << mc
+	 << " & "
+	 << xr << "x" << xc
+	 << " => " << yr << "x" << yc
+	 << endl;
+
+  assert( xc==yc );
+  assert( yr==mr );
+  assert( mc==xr );
+
+  const auto& mmat  = m.values().data();
+  const auto& xvals = vals_vector().data();
+  auto  yvals       = y.vals_vector().data();
 
   float alpha = 1.0;
   float beta = 0.0;
-  //printf("BLIS gemm %dx%dx%d\n",r,x.item_size(),c);
-  // y^t = x^t self^t => y = self x
   bli_sgemm( BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, 
-	     y.batch_size(), y.item_size(), item_size(),
+	     yr,yc,mc,
 	     &alpha,
-	     const_cast<float*>(data()),item_size(),1,
-	     const_cast<float*>( x.data() ),x.colsize(),1,
+	     const_cast<float*>(mmat),  /* rsa,csa */ mr,1,
+	     const_cast<float*>(xvals), /* rsb,csb */ 1,xr,
 	     &beta,
-	     y.data(),y.item_size(),1
+	     yvals,                     /* rsc,csc */ 1,yr
 	     );
-  // bli_sgemm( BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, 
-  // 	   r, x.colsize(), c, &alpha, const_cast<float*>(&vals[0]),
-  // 	   c, 1, const_cast<float*>( x.data() ),
-  // 	   x.colsize(), 1, &beta, &y.vals[0], x.colsize(), 1);
 }
 
-void VectorBatch::v2tmp(const Matrix &x, VectorBatch &y) const { // In place matrix matrix multiplication
-  // (n,m) * (n,k) -> (m,k)
-  const int c = batch_size(), r = item_size();
-  assert( r==x.rowsize() );
-  assert( c==y.batch_size() );
-  assert( x.colsize()==y.item_size() );
+void VectorBatch::v2tmp(const Matrix &x, VectorBatch &y) const {
+
+    const int c = batch_size(), r = item_size();
+	assert( r==x.rowsize() );
+	assert( c==y.batch_size() );
+	assert( x.colsize()==y.item_size() );
+
+	float alpha = 1.0;
+	float beta = 0.0;
+	//printf("BLIS gemm %dx%dx%d\n",r,x.colsize(),c);
+	bli_sgemm( BLIS_TRANSPOSE, BLIS_NO_TRANSPOSE, 
+		   c, x.colsize(), r, &alpha, const_cast<float*>(&vals[0]),
+		   c, 1, const_cast<float*>( x.data() ),
+		   x.colsize(), 1, &beta, &y.vals[0], x.colsize(), 1);
+}
+
+// matrix transpose x self => y
+void VectorBatch::v2mtp(const Matrix &m, VectorBatch &y) const {
+  const int
+    xr = item_size(),   xc = batch_size(),   // column storage
+    mr = m.rowsize(),   mc = m.colsize(),    // row storage
+    yr = y.item_size(), yc = y.batch_size(); // column
+
+  if (trace_scalars())
+    cout << "matrix transpose vector product "
+	 << mr << "x" << mc
+	 << " & "
+	 << xr << "x" << xc
+	 << " => " << yr << "x" << yc
+	 << endl;
+
+  assert( xc==yc );
+  assert( yr==mc );
+  assert( mr==xr );
+
+  const auto& mmat  = m.values().data();
+  const auto& xvals = vals_vector().data();
+  auto        yvals = y.vals_vector().data();
 
   float alpha = 1.0;
   float beta = 0.0;
-  //printf("BLIS gemm %dx%dx%d\n",r,x.colsize(),c);
-  bli_sgemm( BLIS_TRANSPOSE, BLIS_NO_TRANSPOSE, 
-	     c, x.colsize(), r, &alpha, const_cast<float*>(&vals[0]),
-	     c, 1, const_cast<float*>( x.data() ),
-	     x.colsize(), 1, &beta, &y.vals[0], x.colsize(), 1);
+  bli_sgemm( BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, 
+	     yr,yc,mr,
+	     &alpha,
+	     const_cast<float*>(mmat),  /* rsa,csa */ 1,mc,
+	     const_cast<float*>(xvals), /* rsb,csb */ 1,xr,
+	     &beta,
+	     yvals,                     /* rsc,csc */ 1,yr
+	     );
+
 }
 
-void VectorBatch::v2mtp(const Matrix &x, VectorBatch &y) const { // In place matrix matrix multiplication
-  // (m,n) * (k,n) -> (m,k)
-  const int c = batch_size(), r = item_size();
-  assert( r==y.batch_size() );
-  assert( c==x.colsize() );
-  assert( x.rowsize()==y.item_size() );
+/*
+ * x times self => m
+ */
+void VectorBatch::outer2(const VectorBatch &x, Matrix &m) const {
+  const int
+    yr = item_size(),   yc = batch_size(),   // column storage
+    mr = m.rowsize(),   mc = m.colsize(),    // row storage
+    xr = x.item_size(), xc = x.batch_size(); // column
+
+  if (trace_scalars())
+    cout << "outer product "
+	 << xr << "x" << xc
+	 << " & "
+	 << yr << "x" << yc
+	 << " => " << mr << "x" << mc
+	 << endl;
+
+  assert( yc==xc );
+  assert( xr==mr );
+  assert( yr==mc );
+  const auto& xvals = x.vals_vector().data();
+  const auto& yvals =   vals_vector().data();
+  auto        mmat  = m.values().data();
 
   float alpha = 1.0;
   float beta = 0.0;
-  //printf("BLIS gemm %dx%dx%d\n",r,x.colsize(),c);
   bli_sgemm( BLIS_NO_TRANSPOSE, BLIS_TRANSPOSE, 
-	     y.batch_size(), y.item_size(), c, &alpha, const_cast<float*>(&vals[0]),
-	     c, 1, const_cast<float*>( x.data() ),
-	     x.colsize(), 1, &beta, &y.vals[0], y.item_size(), 1);
-}
+	     mr,mc,yc,
+	     &alpha,
+	     const_cast<float*>(xvals), /* rsa,csa */ 1,xr,
+	     const_cast<float*>(yvals), /* rsb,csb */ 1,yr,
+	     &beta,
+	     mmat,                      /* rsc,csc */ mc,1
+	     );
 
-void VectorBatch::outer2(const VectorBatch &x, Matrix &y) const { // In place matrix matrix multiplication
-  // (n,m) *(n,k) -> (m,k)
-  const int c = batch_size(), r = item_size();
-  assert( r == x.batch_size() );
-  assert( c == y.rowsize() );
-  assert( x.item_size() == y.colsize() );
-
-  float alpha = 1.0;
-  float beta = 0.0;
-  //printf("BLIS gemm %dx%dx%d\n",r,x.item_size(),c);
-  bli_sgemm( BLIS_TRANSPOSE, BLIS_NO_TRANSPOSE, 
-	     c, x.item_size(), r, &alpha, const_cast<float*>(&vals[0]), 
-	     c, 1, const_cast<float*>( x.data() ),
-	     x.item_size(), 1, &beta, y.data(), //&y.mat[0],
-	     x.item_size(), 1);
 }

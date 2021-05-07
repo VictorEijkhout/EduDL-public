@@ -11,6 +11,7 @@
  ****************************************************************
  ****************************************************************/
 
+#include "trace.h"
 #include "vector2.h"
 #include <iostream>
 using std::cout;
@@ -40,32 +41,32 @@ VectorBatch::VectorBatch(int batchsize, int itemsize, bool random) {
   }
 }
 		
-VectorBatch VectorBatch::transpose() const {
-  const int c = batch_size(), r = item_size();
-  // Initialize a new matrix with inverted dimension values
-  VectorBatch result(item_size(),batch_size(), 0);
-  int i1, i2; // Old and new index
-  for (int i = 0; i < r; i++) {
-    for (int j = 0; j < c; j++) {
-      i1 = i * c + j; // Old indexing
-      i2 = j * r + i; // New indexing
+// VectorBatch VectorBatch::transpose() const {
+//     const int c = batch_size(), r = item_size();
+//      // Initialize a new matrix with inverted dimension values
+//     VectorBatch result(item_size(),batch_size(), 0);
+//     int i1, i2; // Old and new index
+//     for (int i = 0; i < r; i++) {
+//         for (int j = 0; j < c; j++) {
+//             i1 = i * c + j; // Old indexing
+//             i2 = j * r + i; // New indexing
 
-      result.vals[i2] = vals[i1]; // Move transposed values to new array
-    }
-  }
-  return result;
-}
+//             result.vals[i2] = vals[i1]; // Move transposed values to new array
+//         }
+//     }
+//     return result;
+// }
 
 void VectorBatch::show() const {
-  const int c = batch_size(), r = item_size();
-  int i, j;
-  for (i = 0; i < r; i++) {
-    for (j = 0; j < c; j++) {
-      std::cout << vals[i * c + j] << ' ';
+    const int c = batch_size(), r = item_size();
+    int i, j;
+    for (i = 0; i < r; i++) {
+        for (j = 0; j < c; j++) {
+            std::cout << vals[i * c + j] << ' ';
+        }
+        std::cout << std::endl;
     }
     std::cout << std::endl;
-  }
-  std::cout << std::endl;
 }
 
 
@@ -76,14 +77,13 @@ void VectorBatch::v2mp(const Matrix &m, VectorBatch &y) const {
     mr = m.rowsize(),   mc = m.colsize(),    // row storage
     yr = y.item_size(), yc = y.batch_size(); // column
 
-#ifdef DEBUG
-  cout << "matrix vector product "
-       << mr << "x" << mc
-       << " & "
-       << xr << "x" << xc
-       << " => " << yr << "x" << yc
-       << endl;
-#endif
+  if (trace_scalars())
+    cout << "matrix vector product "
+	 << mr << "x" << mc
+	 << " & "
+	 << xr << "x" << xc
+	 << " => " << yr << "x" << yc
+	 << endl;
 
   assert( xc==yc );
   assert( yr==mr );
@@ -113,20 +113,19 @@ void VectorBatch::v2mp(const Matrix &m, VectorBatch &y) const {
 
 
 // matrix transpose x self => y
-void VectorBatch::v2mtp(const Matrix &m, VectorBatch &y) const { // In place matrix matrix multiplication
+void VectorBatch::v2mtp(const Matrix &m, VectorBatch &y) const {
   const int
     xr = item_size(),   xc = batch_size(),   // column storage
     mr = m.rowsize(),   mc = m.colsize(),    // row storage
     yr = y.item_size(), yc = y.batch_size(); // column
 
-#ifdef DEBUG
-  cout << "matrix transpose vector product "
-       << mr << "x" << mc
-       << " & "
-       << xr << "x" << xc
-       << " => " << yr << "x" << yc
-       << endl;
-#endif
+  if (trace_scalars())
+    cout << "matrix transpose vector product "
+	 << mr << "x" << mc
+	 << " & "
+	 << xr << "x" << xc
+	 << " => " << yr << "x" << yc
+	 << endl;
 
   assert( xc==yc );
   assert( yr==mc );
@@ -135,17 +134,17 @@ void VectorBatch::v2mtp(const Matrix &m, VectorBatch &y) const { // In place mat
   const auto& mmat  = m.values();
   const auto& xvals = vals_vector();
   auto&       yvals = y.vals_vector();
-  for (int i = 0; i < yr; i++) { // Matrix multiplication subroutine
-    for (int j = 0; j < yc; j++) {
-      float sum = 0.0;
-      for (int k = 0; k < mr; k++) {
-	//sum += mmat[ INDEXr(k,i,mc,mr) ] * xvals[ INDEXc(k,j,xr,xc) ]; 
-	// matrix is by rows, so transpose by columns!
-	sum += ELEMENTc( mmat,i,k,mc,mr ) * ELEMENTc( xvals,k,j,xr,xc ); 
-      }
-      yvals.at( INDEXc(i,j,yr,yc) )  = sum;
+    for (int i = 0; i < yr; i++) { // Matrix multiplication subroutine
+        for (int j = 0; j < yc; j++) {
+	    float sum = 0.0;
+            for (int k = 0; k < mr; k++) {
+	      //sum += mmat[ INDEXr(k,i,mc,mr) ] * xvals[ INDEXc(k,j,xr,xc) ]; 
+	      // matrix is by rows, so transpose by columns!
+	      sum += ELEMENTc( mmat,i,k,mc,mr ) * ELEMENTc( xvals,k,j,xr,xc ); 
+            }
+            yvals.at( INDEXc(i,j,yr,yc) )  = sum;
+        }
     }
-  }
 
 }
 
@@ -158,34 +157,33 @@ void VectorBatch::outer2(const VectorBatch &x, Matrix &m ) const {
     mr = m.rowsize(),   mc = m.colsize(),    // row storage
     xr = x.item_size(), xc = x.batch_size(); // column
 
-#ifdef DEBUG
-  cout << "outer product "
-       << xr << "x" << xc
-       << " & "
-       << yr << "x" << yc
-       << " => " << mr << "x" << mc
-       << endl;
-#endif
+  if (trace_scalars())
+    cout << "outer product "
+	 << xr << "x" << xc
+	 << " & "
+	 << yr << "x" << yc
+	 << " => " << mr << "x" << mc
+	 << endl;
 
   assert( yc==xc );
   assert( xr==mr );
   assert( yr==mc );
   const auto& xvals = x.vals_vector();
-  const auto& yvals = vals_vector();
+  const auto& yvals =   vals_vector();
   auto& mmat = m.values();
-  for (int i = 0; i < mr; i++) { // Matrix multiplication subroutine
-    for (int j = 0; j < mc; j++) {
-      float sum = 0.0;
-      for (int k = 0; k < yc; k++) {
-	/*
-	 * index (k,j) in Y transpose => (j,k) in Y
-	 */
-	//sum += yvals[ INDEXc(i,k,yr,yc) ] * xvals[ INDEXc(j,k,xr,xc) ];
-	sum += xvals.at( INDEXc(i,k,xr,xc) ) * yvals.at( INDEXc(j,k,yr,yc) );
-      }
-      //mmat[ INDEX(i,j,mr,mc) ] = sum;
-      mmat.at( INDEXr(i,j,mr,mc) ) = sum;
+    for (int i = 0; i < mr; i++) { // Matrix multiplication subroutine
+      for (int j = 0; j < mc; j++) {
+	    float sum = 0.0;
+            for (int k = 0; k < yc; k++) {
+	      /*
+	       * index (k,j) in Y transpose => (j,k) in Y
+	       */
+	      //sum += yvals[ INDEXc(i,k,yr,yc) ] * xvals[ INDEXc(j,k,xr,xc) ];
+	      sum += xvals.at( INDEXc(i,k,xr,xc) ) * yvals.at( INDEXc(j,k,yr,yc) );
+            }
+            //mmat[ INDEX(i,j,mr,mc) ] = sum;
+            mmat.at( INDEXr(i,j,mr,mc) ) = sum;
+        }
     }
-  }
 
 }
