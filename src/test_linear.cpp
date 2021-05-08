@@ -68,12 +68,13 @@ int main(int argc,char **argv){
     int batchSize = result["b"].as<int>();
 
     /*
-     * Input data set: linear scaling
+     * Input data set: 
+     * y = 2 x + 1
      */
     cout << "Creating data set\n";
     Dataset data(1);
     for (int input=0; input<5; input++) {
-      std::vector<float> i(1,1.f*input), o(1,input+1.);
+      std::vector<float> i(1,1.f*input), o(1,2*input+1.);
       //inputs.add_vector(i); outputs.add_vector(o);
       dataItem thisitem{i,o};
       data.push_back(thisitem);
@@ -96,6 +97,12 @@ int main(int argc,char **argv){
       auto acc = test_net.accuracy(data);
       std::cout << "Accuracy: " << acc << "\n";
       test_net.info();
+
+      auto [train_data,test_data] = data.split(0.9);
+      cout << "Initial accuracy: " << test_net.accuracy(test_data) << "\n";
+      test_net.train(train_data,test_data, epochs, batchSize);
+      cout << "Final Accuracy over test data: " << acc << "\n";
+
     }
 
   } catch ( string e ) {

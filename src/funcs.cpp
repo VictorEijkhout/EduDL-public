@@ -12,10 +12,13 @@
  ****************************************************************/
 
 #include "funcs.h"
+#include "trace.h"
 
 #include <iostream>
 using std::cout;
 using std:: endl;
+#include <iomanip>
+using std::boolalpha;
 #include <vector>
 using std::vector;
 
@@ -49,11 +52,30 @@ void relu_io(const VectorBatch &mm, VectorBatch &a) {
 //template <typename VectorBatch>
 void sigmoid_io(const VectorBatch &m, VectorBatch &a) {
 
-    a.vals_vector().assign(m.vals_vector().begin(),m.vals_vector().end());
-    for (int i = 0; i < m.batch_size() * m.item_size(); i++) {
-      // a.vals_vector()[i]*=(a.vals_vector()[i]>0);
-      // values will be 0 if negative, and equal to themselves if positive
-      a.vals_vector()[i] = 1 / (1 + exp(-a.vals_vector()[i]));
+    const auto& mvals = m.vals_vector();
+    auto& avals = a.vals_vector();
+    avals.assign(mvals.begin(),mvals.end());
+    // for (int i = 0; i < m.batch_size() * m.item_size(); i++) {
+    //   avals[i] = 1 / (1 + exp(-avals[i]));
+    // }
+    for ( auto& e: avals ) {
+      e = 1.f / ( 1.f + exp( -e ) );
+      if (e<1.e-5) e = 1.e-5;
+      if (e>1-1.e-5) e = 1-1.e-5;
+    }
+    if (trace_scalars()) {
+      bool limit{true};
+      float min{2.f},max{-1.f};
+      for_each( avals.begin(),avals.end(),
+		[&min,&max,&limit] (auto e) {
+		  assert( not isinf(e) ); assert( not isnan(e) );
+		  if (e<min) min = e; if (e>max) max = e;
+		  limit = limit && e>0 && e<1;
+		}
+		);
+      cout << "sigmoid limited: " << boolalpha << limit
+	   << ": " << min << "--" << max << "\n";
+      assert( limit );
     }
 }
 //codesnippet end
@@ -129,9 +151,15 @@ void reluGrad_io(const VectorBatch &m, VectorBatch &a) {
 //template <typename VectorBatch>
 void sigGrad_io(const VectorBatch &m, VectorBatch &a) {
     assert( m.size()==a.size() );
-    a.vals_vector().assign(m.vals_vector().begin(),m.vals_vector().end());
-    for ( auto &e : a.vals_vector() )
+
+    const auto& mvals = m.vals_vector();
+    auto& avals = a.vals_vector();
+
+    avals.assign(mvals.begin(),mvals.end());
+    for ( auto &e : avals )
       e = e * (1.0 - e);
+    if (trace_scalars())
+      cout << "sigmoid grad " << m.normf() << " => " << a.normf() << "\n";
 }
 
 //template <typename VectorBatch>

@@ -95,22 +95,49 @@ void Layer::forward(const VectorBatch &prevVals) {
 void Layer::backward
     (const VectorBatch &prev_delta, const Matrix &W, const VectorBatch &prev_output) {
 
-  prev_delta.v2mtp( W, dl );
+  // compute delta ell
   activate_gradient_batch(activated_batch, d_activated_batch); 
+  prev_delta.v2mtp( W, dl );
+   // delta  = Dl . sigma
   delta.hadamard( d_activated_batch,dl ); // Derivative of the current layer
-  //  update_dw(delta, prev_output);
-  prev_output.outer2( delta, dw );
-  weights.axpy( 1.,dw );
-  db = delta.meanh();
-  biases.add( db );
-}
-
-void Layer::update_dw( const VectorBatch &delta, const VectorBatch& prevValues) {
-  prevValues.outer2( delta, dw );
   if (trace_scalars())
-    cout << "dw: " << dw.normf() << "\n";
+    cout << "L-" << layer_number << " delta: "
+	 << d_activated_batch.normf() << "x" << dl.normf() << " => " << delta.normf() << "\n";
+
+  // prev_output.outer2( delta, dw );
+  // if (trace_scalars())
+  //   cout << "L-" << layer_number << " dw: "
+  // 	 << delta.normf() << "x" << prev_output.normf() << " => " << dw.normf() << "\n";
+
+  update_dw(delta, prev_output);
+  // weights.axpy( 1.,dw );
+  // db = delta.meanh();
+  // biases.add( db );
+}
+
+void Layer::update_dw( const VectorBatch &delta, const VectorBatch& prev_output) {
+   prev_output.outer2( delta, dw );
+   if (trace_scalars())
+     cout << "L-" << layer_number << " dw: "
+	  << delta.normf() << "x" << prev_output.normf() << " => " << dw.normf() << "\n";
+
+  // Delta W = delta here X activated prevous
   weights.axpy( 1.,dw );
   db = delta.meanh();
   biases.add( db );
 }
 
+void Layer::set_topdelta( const VectorBatch& gTruth ) {
+
+    // top delta ell is different
+   activate_gradient_batch(activated_batch, d_activated_batch); 
+   dl = activated_batch - gTruth;
+   dl.scaleby( 1.f / gTruth.batch_size() );
+   // delta  = Dl . sigma
+   delta.hadamard( d_activated_batch,dl );
+   if (trace_scalars())
+     cout << "L-" << layer_number << " delta: "
+	  << d_activated_batch.normf() << "x" << dl.normf() << " => " << delta.normf() << "\n";
+
+   //  update_dw(delta, prev_output);
+};

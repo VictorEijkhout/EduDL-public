@@ -37,7 +37,7 @@ funcs.o : funcs.h matrix.h
 layer.o : layer.h funcs.h
 net.o : net.h dataset.h layer.h
 test.o : matrix.h net.h dataset.h layer.h funcs.h
-net.o layer.o vectorbatch_impl_reference.o vectorbatch_impl_blis.o trace.o : trace.h
+funcs.o net.o layer.o vectorbatch_impl_reference.o vectorbatch_impl_blis.o trace.o : trace.h
 
 #
 # implementation specific files have to be recompiled

@@ -121,8 +121,8 @@ int main(int argc,char **argv){
     test_net.set_decay(0.0);
     test_net.set_momentum(0.9);
     test_net.set_optimizer(network_optimizer);
-      test_net.set_uniform_weights(1.f);
-      test_net.set_uniform_biases(0.f);
+      test_net.set_uniform_weights(.5f);
+      test_net.set_uniform_biases(.1f);
       test_net.set_lossfunction(mse);
 
     /*

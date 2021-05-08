@@ -34,7 +34,7 @@ private: // but note that Net is a `friend' class!
     //Vector biased_product; // Values in the layer n after multiplying vals from n-1 and weights
     Matrix weights; // Weights which come before the layer
     Vector activated;
-    VectorBatch activated_batch,delta,wdelta,dl;
+    VectorBatch activated_batch,delta,wdelta,dl,Dscale;
     Vector d_activated; // for backpropagation
     //VectorBatch biased_productm;
     VectorBatch d_activated_batch;
@@ -57,6 +57,7 @@ public:
     int output_size() const { return weights.rowsize(); };
   //    void set_initial_deltas( const Matrix&, const Vector& );
     void set_recursive_deltas( Vector &, const Layer&,const Layer& );
+    void set_topdelta( const VectorBatch& );
     void allocate_batch_specific_temporaries(int batchsize);
     void forward( const VectorBatch &prevVals);
     void backward(const VectorBatch &delta, const Matrix &W, const VectorBatch &prev);

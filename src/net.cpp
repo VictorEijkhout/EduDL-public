@@ -150,19 +150,33 @@ void Net::calculate_initial_delta(VectorBatch &input, VectorBatch &gTruth) {
 }
 
 void Net::backPropagate(const VectorBatch &input, const VectorBatch &gTruth) {
-    VectorBatch delta = layers.back().activated_batch - gTruth;
-    delta.scaleby( 1.f / gTruth.batch_size() );
-    VectorBatch prev = layers.at(layers.size() - 2).activated_batch;
-    //Matrix dW(delta.item_size(), prev.item_size(), 0);
-	
-    layers.back().update_dw(delta, prev);
+
+  // VectorBatch delta = layers.back().activated_batch - gTruth;
+  // delta.scaleby( 1.f / gTruth.batch_size() );
+
+  if (layers.size()==1) {
+    throw(string("single layer case does not work"));
+      // const VectorBatch& prev = input;
+      // layers.back().update_dw(delta, prev);
+      // return;
+  } else {
+
+    if (trace_progress()) cout << "Layer-" << layers.back().layer_number << "\n";
+    layers.back().set_topdelta( gTruth );
+    const VectorBatch& prev = layers.at(layers.size() - 2).activated_batch;
+    layers.back().update_dw(layers.back().delta, prev);
+
 
     for (unsigned i = layers.size() - 2; i > 0; i--) {
+      if (trace_progress()) cout << "Layer-" << layers.at(i).layer_number << "\n";
       layers.at(i).backward
 	( layers.at(i+1).delta, layers.at(i+1).weights, layers.at(i-1).activated_batch);
     }
+
+    if (trace_progress()) cout << "Layer-" << layers.at(0).layer_number << "\n";
     layers.at(0).backward(layers.at(1).delta, layers.at(1).weights, input);
 	
+  }
 }
 
 void Net::SGD(float lr, float momentum) {
@@ -271,7 +285,7 @@ void Net::train( const Dataset &train_data,const Dataset &test_data,
       auto loss = calculateLoss(test_data);
       cout << " Loss: " << loss << endl;
       auto acc = accuracy(test_data);
-      cout << " Accuracy on training set: " << acc << endl;
+      cout << " Accuracy on trest set: " << acc << endl;
     }
 
 }

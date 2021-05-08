@@ -64,6 +64,14 @@ public:
     void resize(int m,int n) {
       nvectors = m; set_item_size(n); //r = m; c = n;
       vals.resize(m*n); };
+    float normf() const {
+      float norm{0.f}; int count{0};
+      for ( auto e : vals ) {
+	norm += e*e; count++;
+      }
+      //std::cout << "norm squared over " << count << " elements: " << norm << "\n";
+      return sqrt(norm);
+    };
     bool notnan() const {
       return all_of
 	( vals.begin(),vals.end(),
